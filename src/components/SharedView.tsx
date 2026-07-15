@@ -147,21 +147,9 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
         </div>
 
         <div className="flex-1 flex flex-col min-h-0 gap-6">
-          {/* Top Area: Campaign Notes */}
-          {state.campaignNotes && state.campaignNotes.trim().length > 0 && (
-            <div className="bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg flex flex-col shrink-0 h-40 min-h-[10rem] max-h-[60vh] resize-y overflow-hidden">
-              <div className="border-b border-bento-border pb-3 mb-4 shrink-0">
-                <h2 className="text-base font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
-                  <BookOpen className={`w-5 h-5 ${colors.text}`} /> Appunti della Campagna
-                </h2>
-              </div>
-              <div className="flex-1 w-full bg-[#0c0d10] border border-bento-border text-slate-200 text-sm rounded-lg p-4 leading-relaxed font-sans shadow-inner overflow-y-auto whitespace-pre-wrap break-words scrollbar-hide">
-                {state.campaignNotes}
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-12 gap-6 flex-1 min-h-0">
+          <div className={state.campaignNotes && state.campaignNotes.trim().length > 0 
+            ? "grid grid-cols-12 gap-6 h-[calc(100%-11.5rem)] shrink-0" 
+            : "grid grid-cols-12 gap-6 flex-1 min-h-0"}>
             {/* Left Column: Turn Tracker (4 cols) */}
             <div className="col-span-4 bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg h-full flex flex-col overflow-hidden">
               <div className="border-b border-bento-border pb-3 mb-4 shrink-0 flex items-center justify-between">
@@ -322,16 +310,14 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
 
           {/* Bottom Area: Campaign Notes */}
           {state.campaignNotes && state.campaignNotes.trim().length > 0 && (
-            <div className="relative shrink-0 h-40 z-50">
-              <div className="absolute top-0 left-0 w-full bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg flex flex-col h-40 min-h-[10rem] max-h-[80vh] resize-y overflow-hidden">
-                <div className="border-b border-bento-border pb-3 mb-4 shrink-0">
-                  <h2 className="text-base font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
-                    <BookOpen className={`w-5 h-5 ${colors.text}`} /> Appunti della Campagna
-                  </h2>
-                </div>
-                <div className="flex-1 w-full bg-[#0c0d10] border border-bento-border text-slate-200 text-sm rounded-lg p-4 leading-relaxed font-sans shadow-inner overflow-y-auto whitespace-pre-wrap break-words scrollbar-hide">
-                  {state.campaignNotes}
-                </div>
+            <div className="bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg flex flex-col shrink-0 h-40 min-h-[10rem] max-h-[80vh] resize-y overflow-hidden relative">
+              <div className="border-b border-bento-border pb-3 mb-4 shrink-0">
+                <h2 className="text-base font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
+                  <BookOpen className={`w-5 h-5 ${colors.text}`} /> Appunti della Campagna
+                </h2>
+              </div>
+              <div className="flex-1 w-full bg-[#0c0d10] border border-bento-border text-slate-200 text-sm rounded-lg p-4 leading-relaxed font-sans shadow-inner overflow-y-auto whitespace-pre-wrap break-words scrollbar-hide">
+                {state.campaignNotes}
               </div>
             </div>
           )}
