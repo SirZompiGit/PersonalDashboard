@@ -45,7 +45,8 @@ export interface CampaignState {
   title: string;
   players: Player[];
   healthBars: HealthBar[];
-  notes: string;
+  notes: string; // Used as Master Notes
+  campaignNotes?: string; // Used as Campaign Notes
   lastRoll: RollResult | null;
   selectedDice: string;
   activePlayerId: string | null;

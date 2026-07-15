@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Player } from '../types';
-import { Users, Plus, Trash2, GripVertical, Edit2, Check, BookOpen, Copy, Star, Search, X } from 'lucide-react';
+import { Users, Plus, Trash2, GripVertical, Edit2, Check, BookOpen, Copy, Star, Search, X, Maximize2, Minimize2 } from 'lucide-react';
 import { CampaignTheme, getThemeColors } from '../theme';
 
 interface CampaignHeaderProps {
@@ -12,6 +13,8 @@ interface CampaignHeaderProps {
   onReorderPlayers: (startIndex: number, endIndex: number) => void;
   notes: string;
   onNotesChange: (notes: string) => void;
+  campaignNotes: string;
+  onCampaignNotesChange: (notes: string) => void;
   activePlayerId: string | null;
   onSetActivePlayer: (id: string | null) => void;
   theme: CampaignTheme;
@@ -29,6 +32,8 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   onReorderPlayers,
   notes,
   onNotesChange,
+  campaignNotes,
+  onCampaignNotesChange,
   activePlayerId,
   onSetActivePlayer,
   theme,
@@ -45,6 +50,10 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   const colorName = theme === 'sapphire' ? 'blue' : theme === 'crimson' ? 'red' : theme;
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [isNotesExpanded, setIsNotesExpanded] = useState(false);
+  
+  const [campaignSearchQuery, setCampaignSearchQuery] = useState('');
+  const [isCampaignNotesExpanded, setIsCampaignNotesExpanded] = useState(false);
 
   const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const renderHighlightedText = (text: string, search: string) => {
@@ -174,79 +183,249 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
             </div>
           )}
           {/* Integrated Notes Area */}
-          <div className="mt-4 flex flex-col relative w-full group/notes">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-              <label className="text-xs uppercase font-mono tracking-wider text-slate-400 flex items-center gap-1.5 font-semibold shrink-0">
-                <BookOpen className={`w-3.5 h-3.5 ${colors.text}`} />
-                Appunti della Campagna
-              </label>
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
+            {/* Master Notes */}
+            <div className="flex flex-col relative w-full group/notes">
+              <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-2 mb-2">
+                <label className="text-xs uppercase font-mono tracking-wider text-slate-400 flex items-center gap-1.5 font-semibold shrink-0">
+                  <BookOpen className={`w-3.5 h-3.5 ${colors.text}`} />
+                  Appunti Master (Privati)
+                </label>
 
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                {/* Real-time search bar */}
-                <div className="flex items-center bg-[#0c0d10] border border-bento-border focus-within:border-slate-500 rounded-lg px-2 py-1 transition-all w-48">
-                  <Search className="w-3 h-3 text-slate-500 shrink-0 mr-1.5" />
-                  <input
-                    type="text"
-                    placeholder="Cerca negli appunti..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="bg-transparent text-slate-100 placeholder-slate-600 text-[11px] focus:outline-none w-full font-sans"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="text-slate-500 hover:text-slate-300 p-0.5 shrink-0"
-                    >
-                      <X className="w-2.5 h-2.5" />
-                    </button>
-                  )}
+                <div className="flex items-center gap-2 self-end xl:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsNotesExpanded(true)}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-bento-border/40 rounded-lg text-slate-300 hover:text-white transition-all flex items-center gap-1 text-[10px] cursor-pointer font-medium"
+                    title="Espandi appunti a tutto schermo"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    <span className="hidden sm:inline">Espandi</span>
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(notes);
-                  }}
-                  className="px-2.5 py-1 hover:bg-[#21242c] border border-bento-border/40 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1 text-[10px] cursor-pointer"
-                  title="Copia appunti"
-                >
-                  <Copy className="w-3 h-3" />
-                  Copia
-                </button>
               </div>
+
+              <textarea
+                value={notes}
+                onChange={(e) => onNotesChange(e.target.value)}
+                placeholder="Scrivi qui i tuoi appunti privati della sessione..."
+                className={`w-full h-28 bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-xs rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-y font-sans`}
+              />
             </div>
 
-            <textarea
-              value={notes}
-              onChange={(e) => onNotesChange(e.target.value)}
-              placeholder="Scrivi qui i tuoi appunti della sessione (es. trame, PNG incontrati, indizi trovati...)"
-              className={`w-full h-28 bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-xs rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-none font-sans`}
-            />
+            {/* Campaign Notes */}
+            <div className="flex flex-col relative w-full group/campaignNotes">
+              <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-2 mb-2">
+                <label className="text-xs uppercase font-mono tracking-wider text-slate-400 flex items-center gap-1.5 font-semibold shrink-0">
+                  <BookOpen className={`w-3.5 h-3.5 ${colors.text}`} />
+                  Appunti Campagna (Pubblici)
+                </label>
 
-            {/* Matching search highlights panel */}
-            {searchQuery.trim() && (
-              <div className="mt-2.5 p-3 bg-[#08090c] border border-bento-border/60 rounded-lg text-xs space-y-1.5 max-h-32 overflow-y-auto animate-fadeIn">
-                <div className="flex justify-between items-center text-[10px] uppercase font-mono text-slate-500 pb-1.5 border-b border-bento-border/30">
-                  <span className="flex items-center gap-1">
-                    <Search className="w-3 h-3 text-amber-500" /> Risultati corrispondenti
-                  </span>
-                  <span>{filteredLines.length} {filteredLines.length === 1 ? 'riga trovata' : 'righe trovate'}</span>
+                <div className="flex items-center gap-2 self-end xl:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsCampaignNotesExpanded(true)}
+                    className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-bento-border/40 rounded-lg text-slate-300 hover:text-white transition-all flex items-center gap-1 text-[10px] cursor-pointer font-medium"
+                    title="Espandi appunti campagna a tutto schermo"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    <span className="hidden sm:inline">Espandi</span>
+                  </button>
                 </div>
-                {filteredLines.length === 0 ? (
-                  <p className="text-[11px] text-slate-600 italic">Nessun risultato trovato per "{searchQuery}".</p>
-                ) : (
-                  <div className="space-y-2">
-                    {filteredLines.map((line, i) => (
-                      <p key={i} className="text-[11px] text-slate-300 leading-relaxed font-sans bg-bento-panel/30 p-1.5 rounded border border-bento-border/20">
-                        <span className="text-[10px] text-slate-500 font-mono mr-1">linea:</span> {renderHighlightedText(line, searchQuery)}
-                      </p>
-                    ))}
-                  </div>
-                )}
               </div>
-            )}
+
+              <textarea
+                value={campaignNotes}
+                onChange={(e) => onCampaignNotesChange(e.target.value)}
+                placeholder="Scrivi qui gli appunti visibili ai giocatori nella schermata Condivisa..."
+                className={`w-full h-28 bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-xs rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-y font-sans`}
+              />
+            </div>
           </div>
+          
+          {/* Expanded Master Notes Modal */}
+          {isNotesExpanded && createPortal(
+            <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-fadeIn">
+              <div className="bg-bento-panel border border-bento-border rounded-xl p-6 sm:p-8 shadow-2xl flex flex-col w-full max-w-5xl h-full max-h-[90vh] relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                  <label className="text-sm uppercase font-mono tracking-wider text-slate-200 flex items-center gap-1.5 font-bold shrink-0">
+                    <BookOpen className={`w-4 h-4 ${colors.text}`} />
+                    Appunti Master (Privati)
+                  </label>
+
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    {/* Real-time search bar */}
+                    <div className="flex items-center bg-[#0c0d10] border border-bento-border focus-within:border-slate-500 rounded-lg px-2 py-1.5 transition-all w-64">
+                      <Search className="w-3.5 h-3.5 text-slate-500 shrink-0 mr-1.5" />
+                      <input
+                        type="text"
+                        placeholder="Cerca negli appunti..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="bg-transparent text-slate-100 placeholder-slate-600 text-xs focus:outline-none w-full font-sans"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery('')}
+                          className="text-slate-500 hover:text-slate-300 p-0.5 shrink-0"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsNotesExpanded(false)}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-bento-border/40 rounded-lg text-slate-300 hover:text-white transition-all flex items-center gap-1.5 text-xs cursor-pointer font-medium"
+                      title="Riduci appunti"
+                    >
+                      <Minimize2 className="w-3.5 h-3.5" />
+                      Riduci
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(notes);
+                      }}
+                      className="px-3 py-1.5 hover:bg-[#21242c] border border-bento-border/40 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+                      title="Copia appunti"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copia
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-grow flex flex-col relative min-h-0">
+                  <textarea
+                    value={notes}
+                    onChange={(e) => onNotesChange(e.target.value)}
+                    placeholder="Scrivi qui i tuoi appunti privati della sessione..."
+                    className={`w-full flex-grow bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-sm rounded-lg p-4 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-y font-sans`}
+                  />
+                  
+                  {/* Matching search highlights panel inside modal */}
+                  {searchQuery.trim() && (
+                    <div className="absolute bottom-4 left-4 right-4 p-3 bg-[#08090c]/95 backdrop-blur border border-bento-border/80 rounded-lg text-sm space-y-2 max-h-48 overflow-y-auto animate-fadeIn shadow-2xl">
+                      <div className="flex justify-between items-center text-xs uppercase font-mono text-slate-500 pb-2 border-b border-bento-border/30">
+                        <span className="flex items-center gap-1.5">
+                          <Search className="w-3.5 h-3.5 text-amber-500" /> Risultati corrispondenti
+                        </span>
+                        <span>{filteredLines.length} {filteredLines.length === 1 ? 'riga trovata' : 'righe trovate'}</span>
+                      </div>
+                      {filteredLines.length === 0 ? (
+                        <p className="text-xs text-slate-600 italic">Nessun risultato trovato per "{searchQuery}".</p>
+                      ) : (
+                        <div className="space-y-2.5 mt-2">
+                          {filteredLines.map((line, i) => (
+                            <p key={i} className="text-xs text-slate-300 leading-relaxed font-sans bg-bento-panel/50 p-2 rounded border border-bento-border/30">
+                              <span className="text-[10px] text-slate-500 font-mono mr-1.5">linea:</span> {renderHighlightedText(line, searchQuery)}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
+
+          {/* Expanded Campaign Notes Modal */}
+          {isCampaignNotesExpanded && createPortal(
+            <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-fadeIn">
+              <div className="bg-bento-panel border border-bento-border rounded-xl p-6 sm:p-8 shadow-2xl flex flex-col w-full max-w-5xl h-full max-h-[90vh] relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                  <label className="text-sm uppercase font-mono tracking-wider text-slate-200 flex items-center gap-1.5 font-bold shrink-0">
+                    <BookOpen className={`w-4 h-4 ${colors.text}`} />
+                    Appunti Campagna (Pubblici)
+                  </label>
+
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    {/* Real-time search bar */}
+                    <div className="flex items-center bg-[#0c0d10] border border-bento-border focus-within:border-slate-500 rounded-lg px-2 py-1.5 transition-all w-64">
+                      <Search className="w-3.5 h-3.5 text-slate-500 shrink-0 mr-1.5" />
+                      <input
+                        type="text"
+                        placeholder="Cerca negli appunti..."
+                        value={campaignSearchQuery}
+                        onChange={(e) => setCampaignSearchQuery(e.target.value)}
+                        className="bg-transparent text-slate-100 placeholder-slate-600 text-xs focus:outline-none w-full font-sans"
+                      />
+                      {campaignSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setCampaignSearchQuery('')}
+                          className="text-slate-500 hover:text-slate-300 p-0.5 shrink-0"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsCampaignNotesExpanded(false)}
+                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-bento-border/40 rounded-lg text-slate-300 hover:text-white transition-all flex items-center gap-1.5 text-xs cursor-pointer font-medium"
+                      title="Riduci appunti"
+                    >
+                      <Minimize2 className="w-3.5 h-3.5" />
+                      Riduci
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(campaignNotes);
+                      }}
+                      className="px-3 py-1.5 hover:bg-[#21242c] border border-bento-border/40 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+                      title="Copia appunti"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      Copia
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-grow flex flex-col relative min-h-0">
+                  <textarea
+                    value={campaignNotes}
+                    onChange={(e) => onCampaignNotesChange(e.target.value)}
+                    placeholder="Scrivi qui gli appunti visibili ai giocatori nella schermata Condivisa..."
+                    className={`w-full flex-grow bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-sm rounded-lg p-4 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-y font-sans`}
+                  />
+                  
+                  {/* Matching search highlights panel inside modal */}
+                  {campaignSearchQuery.trim() && (
+                    <div className="absolute bottom-4 left-4 right-4 p-3 bg-[#08090c]/95 backdrop-blur border border-bento-border/80 rounded-lg text-sm space-y-2 max-h-48 overflow-y-auto animate-fadeIn shadow-2xl">
+                      <div className="flex justify-between items-center text-xs uppercase font-mono text-slate-500 pb-2 border-b border-bento-border/30">
+                        <span className="flex items-center gap-1.5">
+                          <Search className="w-3.5 h-3.5 text-amber-500" /> Risultati corrispondenti
+                        </span>
+                        <span>{campaignNotes.split('\n').filter(line => line.toLowerCase().includes(campaignSearchQuery.toLowerCase())).length} {campaignNotes.split('\n').filter(line => line.toLowerCase().includes(campaignSearchQuery.toLowerCase())).length === 1 ? 'riga trovata' : 'righe trovate'}</span>
+                      </div>
+                      {campaignNotes.split('\n').filter(line => line.toLowerCase().includes(campaignSearchQuery.toLowerCase())).length === 0 ? (
+                        <p className="text-xs text-slate-600 italic">Nessun risultato trovato per "{campaignSearchQuery}".</p>
+                      ) : (
+                        <div className="space-y-2.5 mt-2">
+                          {campaignNotes.split('\n').filter(line => line.toLowerCase().includes(campaignSearchQuery.toLowerCase())).map((line, i) => (
+                            <p key={i} className="text-xs text-slate-300 leading-relaxed font-sans bg-bento-panel/50 p-2 rounded border border-bento-border/30">
+                              <span className="text-[10px] text-slate-500 font-mono mr-1.5">linea:</span> {renderHighlightedText(line, campaignSearchQuery)}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body
+          )}
         </div>
 
         {/* Players / Initiative Order Section */}

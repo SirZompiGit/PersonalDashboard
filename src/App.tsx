@@ -114,6 +114,7 @@ const DEFAULT_STATE: CampaignState = {
     }
   ],
   notes: 'Sotto le rovine di Elidon, il gruppo ha infine risvegliato il Drago Rosso Antico.\n\nNote di gioco:\n- Il drago lancia soffio di fuoco ogni 3 turni.\n- Zephyr ha posizionato una trappola vicino alla colonna est.\n- PNG Chierico cura il barbaro se scende sotto i 15 HP.',
+  campaignNotes: 'Appunti pubblici della campagna:\n- Trovare il fabbro nella città bassa.\n- Pagare il debito alla gilda dei ladri (500mo).',
   lastRoll: null,
   selectedDice: 'd20',
   activePlayerId: null,
@@ -147,6 +148,7 @@ export default function App() {
   const [isSharedMode, setIsSharedMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isExternalUpdateRef = useRef(false);
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
 
   // Check if we are in shared URL mode (?shared=true)
   const [isUrlShared, setIsUrlShared] = useState(false);
@@ -169,14 +171,16 @@ export default function App() {
       if (e.key === LOCAL_STORAGE_KEY && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
+          
+          isExternalUpdateRef.current = true;
           setState((current) => {
-            // Check if contents are identical to avoid infinite update loops
             if (JSON.stringify(current) === JSON.stringify(parsed)) {
+              isExternalUpdateRef.current = false;
               return current;
             }
-            isExternalUpdateRef.current = true;
             return parsed;
           });
+
         } catch (err) {
           console.error(err);
         }
@@ -186,15 +190,16 @@ export default function App() {
     window.addEventListener('storage', handleStorageChange);
 
     // 2. BroadcastChannel (highly responsive, works across tabs)
-    const channel = new BroadcastChannel('fantasia_campaign_channel');
+    if (!broadcastChannelRef.current) broadcastChannelRef.current = new BroadcastChannel('fantasia_campaign_channel');
+    const channel = broadcastChannelRef.current;
     channel.onmessage = (event) => {
       if (event.data && typeof event.data === 'object' && event.data.title) {
+        isExternalUpdateRef.current = true;
         setState((current) => {
-          // Check if contents are identical to avoid infinite update loops
           if (JSON.stringify(current) === JSON.stringify(event.data)) {
+            isExternalUpdateRef.current = false;
             return current;
           }
-          isExternalUpdateRef.current = true;
           return event.data;
         });
       }
@@ -203,7 +208,9 @@ export default function App() {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       channel.close();
+      broadcastChannelRef.current = null;
     };
+
   }, []);
 
   const theme = state.theme || 'crimson';
@@ -233,6 +240,7 @@ export default function App() {
       players: [],
       healthBars: [],
       notes: '',
+      campaignNotes: '',
       lastRoll: null,
       selectedDice: 'd20',
       activePlayerId: null,
@@ -252,16 +260,14 @@ export default function App() {
   // Autosave and broadcast to other tabs whenever state changes
   useEffect(() => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
-      
-      // Only broadcast if the state change was initiated locally (not by receiving a broadcast/storage event)
+      // Only save and broadcast if the state change was initiated locally
       if (isExternalUpdateRef.current) {
         isExternalUpdateRef.current = false; // Reset the flag
       } else {
-        // Broadcast state to other tabs (SharedView)
-        const channel = new BroadcastChannel('fantasia_campaign_channel');
-        channel.postMessage(state);
-        channel.close();
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
+        if (broadcastChannelRef.current) {
+          broadcastChannelRef.current.postMessage(state);
+        }
       }
     } catch (e) {
       console.error('Error saving or broadcasting state:', e);
@@ -449,6 +455,10 @@ export default function App() {
   // Notes Handler
   const handleNotesChange = (text: string) => {
     setState((prev) => ({ ...prev, notes: text }));
+  };
+
+  const handleCampaignNotesChange = (text: string) => {
+    setState((prev) => ({ ...prev, campaignNotes: text }));
   };
 
   // JSON Import & Export functions
@@ -750,6 +760,8 @@ export default function App() {
           onReorderPlayers={handleReorderPlayers}
           notes={state.notes}
           onNotesChange={handleNotesChange}
+          campaignNotes={state.campaignNotes || ''}
+          onCampaignNotesChange={handleCampaignNotesChange}
           activePlayerId={state.activePlayerId}
           onSetActivePlayer={(id) => setState((prev) => ({ ...prev, activePlayerId: id }))}
           theme={theme}

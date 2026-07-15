@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { HealthBar, GradientColors } from '../types';
 import { Plus, Trash2, Edit2, ShieldAlert, Heart, Check, X, Sparkles, Folder, Settings2 } from 'lucide-react';
 import { playDamageSound, playHealSound } from '../utils/audio';
+import { HealthBarItem } from './HealthBarItem';
 
 interface HealthBarsManagerProps {
   healthBars: HealthBar[];
@@ -176,148 +177,6 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
     }
   });
 
-  // Health Bar Card Sub-renderer
-  const renderHealthBarCard = (bar: HealthBar) => {
-    const percentage = bar.maxValue > 0 ? (bar.currentValue / bar.maxValue) * 100 : 0;
-    const activeColor = getBarColor(bar);
-
-    // Generate list of segments
-    const segments = [];
-    const visualMax = bar.maxValue <= 40 ? bar.maxValue : 25;
-    
-    for (let i = 1; i <= visualMax; i++) {
-      segments.push(i);
-    }
-
-    return (
-      <div 
-        key={bar.id} 
-        className="bg-[#0c0d10] border border-bento-border rounded-xl p-4 hover:border-slate-600 transition-all relative group"
-      >
-        {/* Edit/Delete overlay */}
-        <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-          <button
-            type="button"
-            onClick={() => startEdit(bar)}
-            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-[#21242c] rounded-lg transition-colors cursor-pointer"
-            title="Modifica Barra"
-          >
-            <Edit2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => onDeleteHealthBar(bar.id)}
-            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-[#21242c] rounded-lg transition-colors cursor-pointer"
-            title="Elimina Barra"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Bar Header */}
-        <div className="flex justify-between items-center mb-2.5 pr-14">
-          <div className="flex items-center gap-2">
-            <span className="font-display font-bold text-slate-200 tracking-wide text-sm md:text-base">
-              {bar.name}
-            </span>
-            {bar.currentValue === 0 && (
-              <span className="text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <ShieldAlert className="w-3 h-3" /> DEFUNTO
-              </span>
-            )}
-          </div>
-          <div className="font-mono text-xs text-slate-400">
-            <span className="font-bold text-slate-100 text-sm">{bar.currentValue}</span>
-            <span className="text-slate-600 mx-1">/</span>
-            <span>{bar.maxValue}</span>
-            <span className="text-slate-500 ml-1.5">({Math.round(percentage)}%)</span>
-          </div>
-        </div>
-
-        {/* Segmented health track */}
-        <div className="relative">
-          <div 
-            className="flex h-7 w-full rounded-lg bg-[#1a1c23] overflow-hidden border border-bento-border gap-[2px] p-[2px] select-none cursor-pointer"
-            onMouseDown={() => {
-              setIsMouseDown(true);
-              activeBarIdRef.current = bar.id;
-            }}
-          >
-            {segments.map((segIndex) => {
-              let isSegmentActive = false;
-              let segValue = segIndex;
-
-              if (bar.maxValue <= 40) {
-                isSegmentActive = segIndex <= bar.currentValue;
-              } else {
-                const fraction = segIndex / visualMax;
-                segValue = Math.round(fraction * bar.maxValue);
-                isSegmentActive = bar.currentValue >= segValue;
-              }
-
-              return (
-                <div
-                  key={segIndex}
-                  className={`h-full flex-grow rounded-[2px] transition-all duration-150 ${
-                    isSegmentActive 
-                      ? 'opacity-100 hover:brightness-110' 
-                      : 'bg-slate-850/40 hover:bg-slate-800'
-                  }`}
-                  style={{
-                    backgroundColor: isSegmentActive ? activeColor : undefined,
-                    boxShadow: isSegmentActive ? `0 0 4px ${activeColor}50` : 'none'
-                  }}
-                  onClick={() => handleSegmentInteraction(bar, segValue)}
-                  onMouseEnter={() => {
-                    if (isMouseDown && activeBarIdRef.current === bar.id) {
-                      handleSegmentInteraction(bar, segValue);
-                    }
-                  }}
-                />
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Quick adjustments bar below */}
-        <div className="flex items-center justify-between mt-2.5">
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleSegmentInteraction(bar, bar.currentValue - 1)}
-              className="px-2 py-0.5 bg-bento-button hover:bg-[#2d3139] text-slate-300 rounded font-mono text-xs font-bold transition-all cursor-pointer border border-bento-border"
-            >
-              -1 HP
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSegmentInteraction(bar, bar.currentValue - 5)}
-              className="px-2 py-0.5 bg-bento-button hover:bg-[#2d3139] text-slate-400 rounded font-mono text-xs transition-all cursor-pointer border border-bento-border"
-            >
-              -5
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleSegmentInteraction(bar, bar.currentValue + 5)}
-              className="px-2 py-0.5 bg-bento-button hover:bg-[#2d3139] text-slate-400 rounded font-mono text-xs transition-all cursor-pointer border border-bento-border"
-            >
-              +5
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSegmentInteraction(bar, bar.currentValue + 1)}
-              className="px-2 py-0.5 bg-bento-button hover:bg-[#2d3139] text-slate-300 rounded font-mono text-xs font-bold transition-all cursor-pointer border border-bento-border"
-            >
-              +1 HP
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="bg-bento-panel border border-bento-border rounded-xl p-6 shadow-xl relative overflow-hidden">
@@ -707,7 +566,17 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                     <span className="text-[10px] text-slate-500 font-mono">({groupBars.length})</span>
                   </div>
                   <div className="space-y-3">
-                    {groupBars.map((bar) => renderHealthBarCard(bar))}
+                    {groupBars.map((bar) => (<HealthBarItem 
+        key={bar.id}
+        bar={bar} 
+        onEdit={startEdit} 
+        onDelete={onDeleteHealthBar} 
+        getBarColor={getBarColor} 
+        isMouseDown={isMouseDown} 
+        activeBarIdRef={activeBarIdRef} 
+        setIsMouseDown={setIsMouseDown} 
+        handleSegmentInteraction={handleSegmentInteraction} 
+    />))}
                   </div>
                 </div>
               );
@@ -723,7 +592,17 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                   <span className="text-[10px] text-slate-500 font-mono">({ungroupedBars.length})</span>
                 </div>
                 <div className="space-y-3">
-                  {ungroupedBars.map((bar) => renderHealthBarCard(bar))}
+                  {ungroupedBars.map((bar) => (<HealthBarItem 
+        key={bar.id}
+        bar={bar} 
+        onEdit={startEdit} 
+        onDelete={onDeleteHealthBar} 
+        getBarColor={getBarColor} 
+        isMouseDown={isMouseDown} 
+        activeBarIdRef={activeBarIdRef} 
+        setIsMouseDown={setIsMouseDown} 
+        handleSegmentInteraction={handleSegmentInteraction} 
+    />))}
                 </div>
               </div>
             )}

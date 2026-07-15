@@ -215,95 +215,155 @@ export function playCritFailSound() {
 
 /**
  * 4. HP DAMAGE IMPACT SOUND
- * Short, aggressive slashing punch sound.
+ * Triangle wave, pitch drops rapidly. Dynamic based on health ratio.
  */
-export function playDamageSound() {
+export function playDamageSound(healthRatio: number = 0.5) {
   const ctx = getAudioContext();
   if (!ctx) return;
-
   const now = ctx.currentTime;
-  const duration = 0.22;
+  const duration = 0.15;
+  
+  // Base frequencies, drop lower when health is low
+  const baseFreq = 110 + (110 * healthRatio); // 110Hz (near dead) to 220Hz (healthy)
+  const endFreq = baseFreq / 2; // Drops by an octave
 
-  // Sine frequency dive
   const osc = ctx.createOscillator();
   const gainOsc = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(220, now);
-  osc.frequency.exponentialRampToValueAtTime(65, now + duration);
-
-  gainOsc.gain.setValueAtTime(0.35, now);
+  
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(baseFreq, now);
+  osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+  
+  gainOsc.gain.setValueAtTime(0.4, now);
   gainOsc.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-  // White noise burst for the impact friction
-  const noiseNode = ctx.createBufferSource();
-  noiseNode.buffer = createNoiseBuffer(ctx);
-
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'bandpass';
-  filter.frequency.setValueAtTime(280, now);
-  filter.Q.value = 1.5;
-
-  const gainNoise = ctx.createGain();
-  gainNoise.gain.setValueAtTime(0.22, now);
-  gainNoise.gain.exponentialRampToValueAtTime(0.001, now + duration * 0.7);
-
-  // Connections
+  
   osc.connect(gainOsc);
   gainOsc.connect(ctx.destination);
-
-  noiseNode.connect(filter);
-  filter.connect(gainNoise);
-  gainNoise.connect(ctx.destination);
-
+  
   osc.start(now);
   osc.stop(now + duration);
-
-  noiseNode.start(now);
-  noiseNode.stop(now + duration);
 }
 
 /**
  * 5. HP HEAL CELESTIAL SOUND
- * Warm, celestial ascending sweep.
+ * Fast arpeggio (C4, E4, G4, C5) with triangle waves. Dynamic based on health ratio.
  */
-export function playHealSound() {
+export function playHealSound(healthRatio: number = 0.5) {
   const ctx = getAudioContext();
   if (!ctx) return;
-
   const now = ctx.currentTime;
-  const duration = 0.38;
+  
+  // Shift the whole arpeggio up based on health level
+  const pitchMultiplier = 1 + (healthRatio * 0.5); // Up to 1.5x frequency when near full
+  const baseNotes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+  
+  baseNotes.forEach((freq, idx) => {
+    const triggerTime = now + idx * 0.06;
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq * pitchMultiplier, triggerTime);
+    
+    gainNode.gain.setValueAtTime(0, triggerTime);
+    gainNode.gain.linearRampToValueAtTime(0.2, triggerTime + 0.02);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, triggerTime + 0.3);
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    osc.start(triggerTime);
+    osc.stop(triggerTime + 0.3);
+  });
+}
+
+/**
+ * 6. DEATH SOUND (Zero HP)
+ * Dramatic detuned sawtooth waves.
+ */
+export function playDeathSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const duration = 0.5;
 
   const osc1 = ctx.createOscillator();
   const osc2 = ctx.createOscillator();
   const gainNode = ctx.createGain();
 
-  osc1.type = 'sine';
-  osc2.type = 'triangle';
+  osc1.type = 'sawtooth';
+  osc2.type = 'sawtooth';
 
-  // Harmonies ascending in parallel
-  osc1.frequency.setValueAtTime(329.63, now); // E4
-  osc1.frequency.exponentialRampToValueAtTime(659.25, now + duration); // E5
+  osc1.frequency.setValueAtTime(150, now);
+  osc1.frequency.exponentialRampToValueAtTime(60, now + duration);
 
-  osc2.frequency.setValueAtTime(415.30, now); // G#4
-  osc2.frequency.exponentialRampToValueAtTime(830.61, now + duration); // G#5
+  osc2.frequency.setValueAtTime(154, now);
+  osc2.frequency.exponentialRampToValueAtTime(60, now + duration);
 
   gainNode.gain.setValueAtTime(0, now);
-  gainNode.gain.linearRampToValueAtTime(0.16, now + 0.08);
+  gainNode.gain.linearRampToValueAtTime(0.3, now + 0.1);
   gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-  // Soft lowpass filter to make it silky
-  const lpf = ctx.createBiquadFilter();
-  lpf.type = 'lowpass';
-  lpf.frequency.value = 1200;
-
-  osc1.connect(lpf);
-  osc2.connect(lpf);
-  lpf.connect(gainNode);
+  osc1.connect(gainNode);
+  osc2.connect(gainNode);
   gainNode.connect(ctx.destination);
 
   osc1.start(now);
-  osc1.stop(now + duration);
-
   osc2.start(now);
+  osc1.stop(now + duration);
   osc2.stop(now + duration);
+}
+
+/**
+ * 7. MAX HEALTH SOUND
+ * Soft spark sine wave.
+ */
+export function playMaxHealthSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const duration = 0.25;
+
+  const osc = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, now);
+  osc.frequency.exponentialRampToValueAtTime(1760, now + duration);
+
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(0.15, now + 0.05);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+  osc.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + duration);
+}
+
+/**
+ * 8. INTERACTION SOUND (Click)
+ * Short beep sine wave.
+ */
+export function playClickSound() {
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const duration = 0.05;
+
+  const osc = ctx.createOscillator();
+  const gainNode = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(600, now);
+
+  gainNode.gain.setValueAtTime(0.05, now);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+  osc.connect(gainNode);
+  gainNode.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + duration);
 }
