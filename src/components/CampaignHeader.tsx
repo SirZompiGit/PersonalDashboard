@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Player } from '../types';
-import { Users, Plus, Trash2, GripVertical, Edit2, Check, BookOpen, Copy, Star } from 'lucide-react';
+import { Users, Plus, Trash2, GripVertical, Edit2, Check, BookOpen, Copy, Star, Search, X } from 'lucide-react';
 import { CampaignTheme, getThemeColors } from '../theme';
 
 interface CampaignHeaderProps {
@@ -43,6 +43,32 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const colors = getThemeColors(theme);
   const colorName = theme === 'sapphire' ? 'blue' : theme === 'crimson' ? 'red' : theme;
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const renderHighlightedText = (text: string, search: string) => {
+    if (!search.trim()) return <span>{text}</span>;
+    const parts = text.split(new RegExp(`(${escapeRegExp(search)})`, 'gi'));
+    return (
+      <span>
+        {parts.map((part, index) => 
+          part.toLowerCase() === search.toLowerCase() ? (
+            <mark key={index} className="bg-amber-500/35 text-amber-200 font-bold px-1 rounded-sm">
+              {part}
+            </mark>
+          ) : (
+            part
+          )
+        )}
+      </span>
+    );
+  };
+
+  const allLines = notes.split('\n');
+  const filteredLines = searchQuery.trim() 
+    ? allLines.filter(line => line.toLowerCase().includes(searchQuery.toLowerCase()))
+    : [];
 
   const handleTitleSubmit = () => {
     if (tempTitle.trim()) {
@@ -149,29 +175,77 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
           )}
           {/* Integrated Notes Area */}
           <div className="mt-4 flex flex-col relative w-full group/notes">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs uppercase font-mono tracking-wider text-slate-400 flex items-center gap-1.5 font-semibold">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+              <label className="text-xs uppercase font-mono tracking-wider text-slate-400 flex items-center gap-1.5 font-semibold shrink-0">
                 <BookOpen className={`w-3.5 h-3.5 ${colors.text}`} />
                 Appunti della Campagna
               </label>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(notes);
-                }}
-                className="p-1 hover:bg-[#21242c] rounded text-slate-500 hover:text-slate-200 transition-all flex items-center gap-1 text-[10px] cursor-pointer"
-                title="Copia appunti"
-              >
-                <Copy className="w-3 h-3" />
-                Copia
-              </button>
+
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                {/* Real-time search bar */}
+                <div className="flex items-center bg-[#0c0d10] border border-bento-border focus-within:border-slate-500 rounded-lg px-2 py-1 transition-all w-48">
+                  <Search className="w-3 h-3 text-slate-500 shrink-0 mr-1.5" />
+                  <input
+                    type="text"
+                    placeholder="Cerca negli appunti..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-transparent text-slate-100 placeholder-slate-600 text-[11px] focus:outline-none w-full font-sans"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="text-slate-500 hover:text-slate-300 p-0.5 shrink-0"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(notes);
+                  }}
+                  className="px-2.5 py-1 hover:bg-[#21242c] border border-bento-border/40 rounded-lg text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1 text-[10px] cursor-pointer"
+                  title="Copia appunti"
+                >
+                  <Copy className="w-3 h-3" />
+                  Copia
+                </button>
+              </div>
             </div>
+
             <textarea
               value={notes}
               onChange={(e) => onNotesChange(e.target.value)}
               placeholder="Scrivi qui i tuoi appunti della sessione (es. trame, PNG incontrati, indizi trovati...)"
               className={`w-full h-28 bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-xs rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-none font-sans`}
             />
+
+            {/* Matching search highlights panel */}
+            {searchQuery.trim() && (
+              <div className="mt-2.5 p-3 bg-[#08090c] border border-bento-border/60 rounded-lg text-xs space-y-1.5 max-h-32 overflow-y-auto animate-fadeIn">
+                <div className="flex justify-between items-center text-[10px] uppercase font-mono text-slate-500 pb-1.5 border-b border-bento-border/30">
+                  <span className="flex items-center gap-1">
+                    <Search className="w-3 h-3 text-amber-500" /> Risultati corrispondenti
+                  </span>
+                  <span>{filteredLines.length} {filteredLines.length === 1 ? 'riga trovata' : 'righe trovate'}</span>
+                </div>
+                {filteredLines.length === 0 ? (
+                  <p className="text-[11px] text-slate-600 italic">Nessun risultato trovato per "{searchQuery}".</p>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredLines.map((line, i) => (
+                      <p key={i} className="text-[11px] text-slate-300 leading-relaxed font-sans bg-bento-panel/30 p-1.5 rounded border border-bento-border/20">
+                        <span className="text-[10px] text-slate-500 font-mono mr-1">linea:</span> {renderHighlightedText(line, searchQuery)}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

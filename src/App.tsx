@@ -20,7 +20,8 @@ import {
   Settings,
   Palette,
   Wand2,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 import { setMuted } from './utils/audio';
 import { CampaignTheme, getThemeColors } from './theme';
@@ -80,7 +81,8 @@ const DEFAULT_STATE: CampaignState = {
         low: '#dc2626',
         mid: '#f59e0b',
         high: '#10b981'
-      }
+      },
+      group: 'Nemici'
     },
     {
       id: 'h2',
@@ -93,7 +95,8 @@ const DEFAULT_STATE: CampaignState = {
         low: '#ef4444',
         mid: '#ef4444',
         high: '#ef4444'
-      }
+      },
+      group: 'Nemici'
     },
     {
       id: 'h3',
@@ -106,14 +109,17 @@ const DEFAULT_STATE: CampaignState = {
         low: '#dc2626',
         mid: '#ef4444',
         high: '#10b981'
-      }
+      },
+      group: 'Alleati'
     }
   ],
   notes: 'Sotto le rovine di Elidon, il gruppo ha infine risvegliato il Drago Rosso Antico.\n\nNote di gioco:\n- Il drago lancia soffio di fuoco ogni 3 turni.\n- Zephyr ha posizionato una trappola vicino alla colonna est.\n- PNG Chierico cura il barbaro se scende sotto i 15 HP.',
   lastRoll: null,
   selectedDice: 'd20',
   activePlayerId: null,
-  theme: 'crimson'
+  theme: 'crimson',
+  healthGroups: ['Nemici', 'Alleati', 'PG'],
+  diceLabels: ['Tiro salvezza', 'Tiro attacco', 'Prova di abilità', 'Percezione', 'Danno']
 };
 
 export default function App() {
@@ -124,7 +130,12 @@ export default function App() {
         const parsed = JSON.parse(saved);
         // Basic schema check to prevent crashes
         if (parsed && typeof parsed === 'object' && 'title' in parsed) {
-          return parsed as CampaignState;
+          return {
+            ...DEFAULT_STATE,
+            ...parsed,
+            healthGroups: parsed.healthGroups || DEFAULT_STATE.healthGroups,
+            diceLabels: parsed.diceLabels || DEFAULT_STATE.diceLabels,
+          } as CampaignState;
         }
       }
     } catch (e) {
@@ -135,6 +146,7 @@ export default function App() {
 
   const [isSharedMode, setIsSharedMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isExternalUpdateRef = useRef(false);
 
   // Check if we are in shared URL mode (?shared=true)
   const [isUrlShared, setIsUrlShared] = useState(false);
@@ -162,6 +174,7 @@ export default function App() {
             if (JSON.stringify(current) === JSON.stringify(parsed)) {
               return current;
             }
+            isExternalUpdateRef.current = true;
             return parsed;
           });
         } catch (err) {
@@ -181,6 +194,7 @@ export default function App() {
           if (JSON.stringify(current) === JSON.stringify(event.data)) {
             return current;
           }
+          isExternalUpdateRef.current = true;
           return event.data;
         });
       }
@@ -205,6 +219,30 @@ export default function App() {
   });
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isConfirmingReset, setIsConfirmingReset] = useState(false);
+
+  useEffect(() => {
+    if (!isSettingsOpen) {
+      setIsConfirmingReset(false);
+    }
+  }, [isSettingsOpen]);
+
+  const handleResetAll = () => {
+    setState({
+      title: 'Nuova Campagna',
+      players: [],
+      healthBars: [],
+      notes: '',
+      lastRoll: null,
+      selectedDice: 'd20',
+      activePlayerId: null,
+      theme: 'crimson',
+      healthGroups: ['Nemici', 'Alleati', 'PG'],
+      diceLabels: ['Tiro salvezza', 'Tiro attacco', 'Prova di abilità', 'Percezione', 'Danno']
+    });
+    setIsConfirmingReset(false);
+    setIsSettingsOpen(false);
+  };
 
   useEffect(() => {
     localStorage.setItem('fantasia_muted', isMuted ? 'true' : 'false');
@@ -216,10 +254,15 @@ export default function App() {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
       
-      // Broadcast state to other tabs (SharedView)
-      const channel = new BroadcastChannel('fantasia_campaign_channel');
-      channel.postMessage(state);
-      channel.close();
+      // Only broadcast if the state change was initiated locally (not by receiving a broadcast/storage event)
+      if (isExternalUpdateRef.current) {
+        isExternalUpdateRef.current = false; // Reset the flag
+      } else {
+        // Broadcast state to other tabs (SharedView)
+        const channel = new BroadcastChannel('fantasia_campaign_channel');
+        channel.postMessage(state);
+        channel.close();
+      }
     } catch (e) {
       console.error('Error saving or broadcasting state:', e);
     }
@@ -260,19 +303,111 @@ export default function App() {
   };
 
   // Dice Roller Handlers
-  const handleRoll = (diceType: string, result: number) => {
+  const handleRoll = (diceType: string, result: number, label?: string) => {
     setState((prev) => ({
       ...prev,
       lastRoll: {
         diceType,
         result,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        label
       }
     }));
   };
 
   const handleSelectedDiceChange = (dice: string) => {
     setState((prev) => ({ ...prev, selectedDice: dice }));
+  };
+
+  const handleAddDiceLabel = (label: string) => {
+    setState((prev) => {
+      const currentLabels = prev.diceLabels || ['Tiro salvezza', 'Tiro attacco', 'Prova di abilità', 'Percezione', 'Danno'];
+      if (currentLabels.includes(label)) return prev;
+      return {
+        ...prev,
+        diceLabels: [...currentLabels, label]
+      };
+    });
+  };
+
+  const handleRenameDiceLabel = (oldLabel: string, newLabel: string) => {
+    setState((prev) => {
+      const currentLabels = prev.diceLabels || ['Tiro salvezza', 'Tiro attacco', 'Prova di abilità', 'Percezione', 'Danno'];
+      const updatedLabels = currentLabels.map((l) => (l === oldLabel ? newLabel : l));
+      
+      const updatedRoll = prev.lastRoll && prev.lastRoll.label === oldLabel 
+        ? { ...prev.lastRoll, label: newLabel } 
+        : prev.lastRoll;
+
+      return {
+        ...prev,
+        diceLabels: updatedLabels,
+        lastRoll: updatedRoll
+      };
+    });
+  };
+
+  const handleDeleteDiceLabel = (label: string) => {
+    setState((prev) => {
+      const currentLabels = prev.diceLabels || ['Tiro salvezza', 'Tiro attacco', 'Prova di abilità', 'Percezione', 'Danno'];
+      const updatedLabels = currentLabels.filter((l) => l !== label);
+
+      const updatedRoll = prev.lastRoll && prev.lastRoll.label === label 
+        ? { ...prev.lastRoll, label: undefined } 
+        : prev.lastRoll;
+
+      return {
+        ...prev,
+        diceLabels: updatedLabels,
+        lastRoll: updatedRoll
+      };
+    });
+  };
+
+  // Health Groups Handlers
+  const handleAddGroup = (group: string) => {
+    setState((prev) => {
+      const currentGroups = prev.healthGroups || ['Nemici', 'Alleati', 'PG'];
+      if (currentGroups.includes(group)) return prev;
+      return {
+        ...prev,
+        healthGroups: [...currentGroups, group]
+      };
+    });
+  };
+
+  const handleRenameGroup = (oldName: string, newName: string) => {
+    setState((prev) => {
+      const currentGroups = prev.healthGroups || ['Nemici', 'Alleati', 'PG'];
+      const updatedGroups = currentGroups.map((g) => (g === oldName ? newName : g));
+      
+      const updatedBars = prev.healthBars.map((bar) => 
+        bar.group === oldName ? { ...bar, group: newName } : bar
+      );
+
+      return {
+        ...prev,
+        healthGroups: updatedGroups,
+        healthBars: updatedBars
+      };
+    });
+  };
+
+  const handleDeleteGroup = (group: string) => {
+    setState((prev) => {
+      const currentGroups = prev.healthGroups || ['Nemici', 'Alleati', 'PG'];
+      const updatedGroups = currentGroups.filter((g) => g !== group);
+
+      const updatedBars = prev.healthBars.map((bar) => 
+        bar.group === group ? { ...bar, group: undefined } : bar
+      );
+
+      return {
+        ...prev,
+        healthGroups: updatedGroups,
+        healthBars: updatedBars
+      };
+    });
   };
 
   // Health Bars Handlers
@@ -558,6 +693,43 @@ export default function App() {
                       )}
                     </button>
                   </div>
+
+                  {/* Complete Reset section */}
+                  <div className="pt-3 border-t border-bento-border space-y-2">
+                    {!isConfirmingReset ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsConfirmingReset(true)}
+                        className="w-full py-2 bg-red-950/20 hover:bg-red-950/30 border border-red-500/20 text-red-400 hover:text-red-300 rounded-lg text-xs font-mono font-bold uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        title="Resetta completamente tutti i dati"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                        Reset Completo
+                      </button>
+                    ) : (
+                      <div className="bg-red-950/30 border border-red-500/30 rounded-lg p-2.5 space-y-2 text-center">
+                        <p className="text-[10px] text-red-400 font-mono leading-normal font-semibold">
+                          Sei sicuro? Questa azione è irreversibile e cancellerà tutto.
+                        </p>
+                        <div className="flex gap-1.5 justify-center">
+                          <button
+                            type="button"
+                            onClick={handleResetAll}
+                            className="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold font-mono transition-colors cursor-pointer"
+                          >
+                            SI, RESETTA
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsConfirmingReset(false)}
+                            className="px-2.5 py-1 bg-[#16181f] border border-bento-border text-slate-300 rounded text-[10px] font-bold font-mono transition-colors cursor-pointer"
+                          >
+                            ANNULLA
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             )}
@@ -593,9 +765,13 @@ export default function App() {
           <div className="lg:col-span-7">
             <HealthBarsManager
               healthBars={state.healthBars}
+              healthGroups={state.healthGroups || ['Nemici', 'Alleati', 'PG']}
               onAddHealthBar={handleAddHealthBar}
               onUpdateHealthBar={handleUpdateHealthBar}
               onDeleteHealthBar={handleDeleteHealthBar}
+              onAddGroup={handleAddGroup}
+              onRenameGroup={handleRenameGroup}
+              onDeleteGroup={handleDeleteGroup}
             />
           </div>
 
@@ -608,6 +784,10 @@ export default function App() {
                 selectedDice={state.selectedDice}
                 onSelectedDiceChange={handleSelectedDiceChange}
                 theme={theme}
+                diceLabels={state.diceLabels || ['Tiro salvezza', 'Tiro attacco', 'Prova di abilità', 'Percezione', 'Danno']}
+                onAddDiceLabel={handleAddDiceLabel}
+                onRenameDiceLabel={handleRenameDiceLabel}
+                onDeleteDiceLabel={handleDeleteDiceLabel}
               />
             </div>
           </div>

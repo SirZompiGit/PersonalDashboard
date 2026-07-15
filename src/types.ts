@@ -31,12 +31,14 @@ export interface HealthBar {
   colorMode: 'static' | 'gradient';
   staticColor: string;
   gradientColors: GradientColors;
+  group?: string; // Optional group name for categorization
 }
 
 export interface RollResult {
   diceType: string;
   result: number;
   timestamp: number;
+  label?: string; // Optional label for the roll
 }
 
 export interface CampaignState {
@@ -48,4 +50,6 @@ export interface CampaignState {
   selectedDice: string;
   activePlayerId: string | null;
   theme?: CampaignTheme;
+  healthGroups?: string[]; // Custom health bar groups
+  diceLabels?: string[]; // Custom dice roll labels
 }

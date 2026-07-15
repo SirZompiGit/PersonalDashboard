@@ -12,6 +12,8 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
   const colors = getThemeColors(theme);
   const colorName = theme === 'sapphire' ? 'blue' : theme === 'crimson' ? 'red' : theme;
 
+  const healthGroups = state.healthGroups || ['Nemici', 'Alleati', 'PG'];
+
   // Helper to determine the bar's color based on its current health percentage
   const getBarColor = (bar: HealthBar) => {
     if (bar.colorMode === 'static') {
@@ -27,12 +29,85 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
     }
   };
 
+  // Group the health bars
+  const barsByGroup: Record<string, HealthBar[]> = {};
+  const ungroupedBars: HealthBar[] = [];
+
+  healthBars.forEach((bar) => {
+    if (bar.group && healthGroups.includes(bar.group)) {
+      if (!barsByGroup[bar.group]) {
+        barsByGroup[bar.group] = [];
+      }
+      barsByGroup[bar.group].push(bar);
+    } else {
+      ungroupedBars.push(bar);
+    }
+  });
+
   // RGB representation for shadows
   const rgbValues = 
     theme === 'emerald' ? '16,185,129' : 
     theme === 'sapphire' ? '59,130,246' : 
     theme === 'amber' ? '245,158,11' : 
     '239,68,68';
+
+  // Sub-renderer for individual health bar cards
+  const renderHealthBarItem = (bar: HealthBar) => {
+    const percentage = bar.maxValue > 0 ? (bar.currentValue / bar.maxValue) * 100 : 0;
+    const activeColor = getBarColor(bar);
+    
+    // Segment calculations for visual rendering (non-interactive)
+    const visualMax = bar.maxValue <= 40 ? bar.maxValue : 25;
+    const segments = Array.from({ length: visualMax }, (_, i) => i + 1);
+
+    return (
+      <div key={bar.id} className="space-y-1.5 bg-[#0c0d10]/40 p-3 rounded-lg border border-bento-border/50">
+        <div className="flex justify-between items-center px-1">
+          <span className="font-display font-extrabold text-slate-200 text-xs md:text-sm tracking-wide">
+            {bar.name}
+          </span>
+          {bar.currentValue === 0 ? (
+            <span className={`text-[8px] font-mono font-extrabold ${colors.text} ${colors.glowBg} px-1.5 py-0.5 rounded uppercase`}>
+              DEFUNTO
+            </span>
+          ) : (
+            <span className="font-mono text-[11px] text-slate-400">
+              <span className="font-bold text-slate-200">{bar.currentValue}</span>
+              <span className="text-slate-600 mx-0.5">/</span>
+              <span>{bar.maxValue}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Non-interactive Health Bar Segments */}
+        <div className="flex h-4 w-full rounded bg-[#1a1c23] overflow-hidden border border-bento-border gap-[1px] p-[1px] select-none">
+          {segments.map((segIndex) => {
+            let isSegmentActive = false;
+            if (bar.maxValue <= 40) {
+              isSegmentActive = segIndex <= bar.currentValue;
+            } else {
+              const fraction = segIndex / visualMax;
+              const segValue = Math.round(fraction * bar.maxValue);
+              isSegmentActive = bar.currentValue >= segValue;
+            }
+
+            return (
+              <div
+                key={segIndex}
+                className={`h-full flex-grow rounded-[1px] transition-all duration-300 ${
+                  isSegmentActive ? 'opacity-100' : 'bg-slate-850/40'
+                }`}
+                style={{
+                  backgroundColor: isSegmentActive ? activeColor : undefined,
+                  boxShadow: isSegmentActive ? `0 0 3px ${activeColor}30` : 'none'
+                }}
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#0c0d10] text-slate-100 flex flex-col p-6 md:p-12 relative overflow-hidden font-sans">
@@ -109,83 +184,63 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
           </div>
         </div>
 
-        {/* Middle Column: Health Trackers */}
+        {/* Middle Column: Grouped Health Trackers */}
         <div className="lg:col-span-5 space-y-6 bg-bento-panel border border-bento-border rounded-xl p-6 md:p-8">
           <div className="border-b border-bento-border pb-3 mb-4">
             <h2 className="text-lg font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
               <Heart className={`w-5 h-5 ${colors.text}`} />
               Stato della Salute
             </h2>
-            <p className="text-[11px] text-slate-500 mt-1 font-mono uppercase">Salute dei mostri e alleati</p>
+            <p className="text-[11px] text-slate-500 mt-1 font-mono uppercase">Salute dei mostri e alleati raggruppati</p>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-6">
             {healthBars.length === 0 ? (
               <div className="text-center py-8 text-slate-600 italic text-sm">
                 Nessun tracciatore di salute attivo.
               </div>
             ) : (
-              healthBars.map((bar) => {
-                const percentage = bar.maxValue > 0 ? (bar.currentValue / bar.maxValue) * 100 : 0;
-                const activeColor = getBarColor(bar);
-                
-                // Segment calculations for visual rendering (non-interactive)
-                const visualMax = bar.maxValue <= 40 ? bar.maxValue : 25;
-                const segments = Array.from({ length: visualMax }, (_, i) => i + 1);
+              <div className="space-y-6">
+                {/* 1. Loop through custom groups */}
+                {healthGroups.map((groupName) => {
+                  const groupBars = barsByGroup[groupName] || [];
+                  if (groupBars.length === 0) return null;
 
-                return (
-                  <div key={bar.id} className="space-y-1.5">
-                    <div className="flex justify-between items-center px-1">
-                      <span className="font-display font-extrabold text-slate-200 text-sm md:text-base tracking-wide">
-                        {bar.name}
-                      </span>
-                      {bar.currentValue === 0 ? (
-                        <span className={`text-[9px] font-mono font-extrabold ${colors.text} ${colors.glowBg} px-2 py-0.5 rounded-full uppercase`}>
-                          DEFUNTO
+                  return (
+                    <div key={groupName} className="space-y-3">
+                      <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold bg-[#0c0d10] px-1.5 py-0.5 rounded border border-bento-border/40">
+                          {groupName}
                         </span>
-                      ) : (
-                        <span className="font-mono text-xs text-slate-400">
-                          <span className="font-bold text-slate-200 text-sm">{bar.currentValue}</span>
-                          <span className="text-slate-600 mx-1">/</span>
-                          <span>{bar.maxValue}</span>
-                        </span>
-                      )}
+                        <span className="text-[10px] text-slate-500 font-mono">({groupBars.length})</span>
+                      </div>
+                      <div className="space-y-3">
+                        {groupBars.map((bar) => renderHealthBarItem(bar))}
+                      </div>
                     </div>
+                  );
+                })}
 
-                    {/* Non-interactive Health Bar Segments */}
-                    <div className="flex h-5 w-full rounded-md bg-[#1a1c23] overflow-hidden border border-bento-border gap-[2px] p-[1.5px] select-none">
-                      {segments.map((segIndex) => {
-                        let isSegmentActive = false;
-                        if (bar.maxValue <= 40) {
-                          isSegmentActive = segIndex <= bar.currentValue;
-                        } else {
-                          const fraction = segIndex / visualMax;
-                          const segValue = Math.round(fraction * bar.maxValue);
-                          isSegmentActive = bar.currentValue >= segValue;
-                        }
-
-                        return (
-                          <div
-                            key={segIndex}
-                            className={`h-full flex-grow rounded-[1px] transition-all duration-300 ${
-                              isSegmentActive ? 'opacity-100' : 'bg-slate-850/40'
-                            }`}
-                            style={{
-                              backgroundColor: isSegmentActive ? activeColor : undefined,
-                              boxShadow: isSegmentActive ? `0 0 3px ${activeColor}30` : 'none'
-                            }}
-                          />
-                        );
-                      })}
+                {/* 2. Show ungrouped bars */}
+                {ungroupedBars.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold bg-[#0c0d10] px-1.5 py-0.5 rounded border border-bento-border/40">
+                        Senza Gruppo
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono">({ungroupedBars.length})</span>
+                    </div>
+                    <div className="space-y-3">
+                      {ungroupedBars.map((bar) => renderHealthBarItem(bar))}
                     </div>
                   </div>
-                );
-              })
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        {/* Right Column: Dice Roll Spotlight */}
+        {/* Right Column: Dice Roll Spotlight with Labels */}
         <div className="lg:col-span-3 space-y-6">
           <div className="bg-bento-panel border border-bento-border rounded-xl p-6 md:p-8 flex flex-col items-center justify-center text-center relative overflow-hidden min-h-[300px]">
             {/* Spotlight decoration */}
@@ -202,6 +257,13 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
                 <span className="text-slate-500 uppercase tracking-widest font-mono text-xs mb-1 block">
                   Dado {lastRoll.diceType}
                 </span>
+
+                {/* Dice roll label badge */}
+                {lastRoll.label && (
+                  <span className="inline-block mt-1 text-[10px] font-mono font-bold px-2 py-0.5 bg-[#0c0d10] border border-bento-border text-slate-300 rounded uppercase tracking-wider">
+                    {lastRoll.label}
+                  </span>
+                )}
                 
                 <span className={`text-7xl md:text-8xl font-display font-black tracking-tighter text-white drop-shadow-[0_0_20px_rgba(${rgbValues},0.35)] block my-4`}>
                   {lastRoll.result}
