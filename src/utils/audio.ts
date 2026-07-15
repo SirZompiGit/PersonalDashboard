@@ -1,6 +1,6 @@
 /**
- * Audio Synthesis Utility for D&D Campaign Master Dashboard
- * Uses the Web Audio API to dynamically generate retro-modern D&D sound effects.
+ * Audio Synthesis Utility for Fantasia Campaign Master Dashboard
+ * Uses the Web Audio API to dynamically generate retro-modern Fantasia sound effects.
  * 
  * Includes:
  * - Dice Roll (realistic rolling clatters)

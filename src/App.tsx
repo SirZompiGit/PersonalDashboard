@@ -26,7 +26,7 @@ import {
 import { setMuted } from './utils/audio';
 import { CampaignTheme, getThemeColors } from './theme';
 
-const LOCAL_STORAGE_KEY = 'dnd_campaign_master_state';
+const LOCAL_STORAGE_KEY = 'fantasia_campaign_master_state';
 
 // Beautiful starting seed data to make the app look rich on first load
 const DEFAULT_STATE: CampaignState = {
@@ -459,7 +459,7 @@ export default function App() {
       downloadAnchor.setAttribute('href', dataStr);
       // Clean Campaign name for file naming
       const cleanCampName = state.title.toLowerCase().replace(/[^a-z0-9]/gi, '_').substring(0, 20);
-      downloadAnchor.setAttribute('download', `dnd_sessione_${cleanCampName || 'campagna'}.json`);
+      downloadAnchor.setAttribute('download', `fantasia_sessione_${cleanCampName || 'campagna'}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
