@@ -1,0 +1,6 @@
+{
+  "name": "D&D Campaign Master Dashboard",
+  "description": "Un pannello di controllo completo ed elegante per il Dungeon Master di D&D, con gestione partecipanti, lancio dadi, tracciamento salute segmentato e condivisibile, schede giocatore e salvataggio locale.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
