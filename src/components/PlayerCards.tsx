@@ -117,13 +117,13 @@ export const PlayerCards: React.FC<PlayerCardsProps> = ({ players, onUpdatePlaye
                 key={player.id}
                 className={`bg-bento-panel border rounded-xl p-5 shadow-lg hover:shadow-xl transition-all relative overflow-hidden flex flex-col ${
                   activePlayerId === player.id
-                    ? `border-${colorName}-500 shadow-${colorName}-950/20 ring-1 ring-${colorName}-500/20`
+                    ? `${colors.border} ${colors.shadow} ring-1 ${colors.ring}`
                     : 'border-bento-border hover:border-slate-600'
                 }`}
               >
                 {/* Visual indicator of luxury slab */}
                 <div className={`absolute top-0 left-0 w-1.5 h-full ${
-                  activePlayerId === player.id ? colors.bg : `bg-${colorName}-500/20`
+                  activePlayerId === player.id ? colors.bg : `${colors.glowBg}`
                 }`} />
 
                 {/* Player Name */}
@@ -174,7 +174,7 @@ export const PlayerCards: React.FC<PlayerCardsProps> = ({ players, onUpdatePlaye
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleAddItem(player.id, 'inventory');
                           }}
-                          className={`bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/50 text-slate-100 text-xs rounded px-2.5 py-1 focus:outline-none flex-grow`}
+                          className={`bg-[#0c0d10] border border-bento-border focus:${colors.border}/50 text-slate-100 text-xs rounded px-2.5 py-1 focus:outline-none flex-grow`}
                           autoFocus
                           maxLength={35}
                         />
@@ -207,7 +207,7 @@ export const PlayerCards: React.FC<PlayerCardsProps> = ({ players, onUpdatePlaye
                                     type="text"
                                     value={editingItemText}
                                     onChange={(e) => setEditingItemText(e.target.value)}
-                                    className={`bg-bento-panel border border-${colorName}-500/50 rounded px-1.5 py-0.5 text-slate-100 focus:outline-none text-xs w-full font-mono`}
+                                    className={`bg-bento-panel border ${colors.border}/50 rounded px-1.5 py-0.5 text-slate-100 focus:outline-none text-xs w-full font-mono`}
                                     autoFocus
                                     maxLength={35}
                                     onKeyDown={(e) => {
@@ -278,7 +278,7 @@ export const PlayerCards: React.FC<PlayerCardsProps> = ({ players, onUpdatePlaye
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') handleAddItem(player.id, 'bonus');
                           }}
-                          className={`bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/50 text-slate-100 text-xs rounded px-2.5 py-1 focus:outline-none flex-grow`}
+                          className={`bg-[#0c0d10] border border-bento-border focus:${colors.border}/50 text-slate-100 text-xs rounded px-2.5 py-1 focus:outline-none flex-grow`}
                           autoFocus
                           maxLength={35}
                         />
@@ -311,7 +311,7 @@ export const PlayerCards: React.FC<PlayerCardsProps> = ({ players, onUpdatePlaye
                                     type="text"
                                     value={editingItemText}
                                     onChange={(e) => setEditingItemText(e.target.value)}
-                                    className={`bg-bento-panel border border-${colorName}-500/50 rounded px-1.5 py-0.5 text-slate-100 focus:outline-none text-xs w-full font-mono`}
+                                    className={`bg-bento-panel border ${colors.border}/50 rounded px-1.5 py-0.5 text-slate-100 focus:outline-none text-xs w-full font-mono`}
                                     autoFocus
                                     maxLength={35}
                                     onKeyDown={(e) => {

@@ -13,8 +13,20 @@
 let audioCtx: AudioContext | null = null;
 let isMuted = false;
 
+if (typeof window !== 'undefined') {
+  isMuted = localStorage.getItem('fantasia_muted') === 'true';
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'fantasia_muted') {
+      isMuted = e.newValue === 'true';
+    }
+  });
+}
+
 export function setMuted(muted: boolean) {
   isMuted = muted;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('fantasia_muted', muted ? 'true' : 'false');
+  }
 }
 
 export function getMuted(): boolean {

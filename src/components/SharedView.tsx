@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CampaignState, Player, HealthBar } from '../types';
-import { Shield, Sparkles, BookOpen, Heart, Star } from 'lucide-react';
+import { Shield, Sparkles, BookOpen, Heart, Star, GripHorizontal, GripVertical } from 'lucide-react';
 import { CampaignTheme, getThemeColors } from '../theme';
 import { HealthBarItem } from './HealthBarItem';
 import { playRollSound, playCritSuccessSound, playCritFailSound } from '../utils/audio';
@@ -19,29 +19,12 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
   const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number }[]>([]);
   const prevRollTimestampRef = useRef<number | null>(null);
 
-  const [scale, setScale] = useState(1);
+  
+
+
+  const [healthLayout, setHealthLayout] = useState<'horizontal' | 'vertical'>('horizontal');
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Dummy ref for HealthBarItem readOnly mode
   const dummyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const updateScale = () => {
-      // Virtual resolution: 1280x800
-      const targetW = 1280;
-      const targetH = 800;
-      const windowW = window.innerWidth;
-      const windowH = window.innerHeight;
-      const scaleW = windowW / targetW;
-      const scaleH = windowH / targetH;
-      // Fit to screen entirely
-      setScale(Math.min(scaleW, scaleH));
-    };
-
-    updateScale();
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
-  }, []);
 
   useEffect(() => {
     if (lastRoll && lastRoll.timestamp !== prevRollTimestampRef.current) {
@@ -87,6 +70,7 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
       setIsMouseDown={() => {}}
       handleSegmentInteraction={() => {}}
       readOnly={true}
+      layout={healthLayout}
     />
   );
 
@@ -108,7 +92,7 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
     theme === 'amber' ? '245,158,11' : '239,68,68';
 
   return (
-    <div className="w-screen h-screen bg-[#0c0d10] text-slate-100 flex items-center justify-center overflow-hidden relative font-sans">
+    <div className="w-screen h-screen bg-[#0c0d10] text-slate-100 overflow-auto relative font-sans flex flex-col p-4 md:p-8">
       <style>{`
         @keyframes diceParticleFloatShared {
           0% { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy))) scale(0.5); opacity: 0; }
@@ -124,40 +108,32 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
       `}</style>
       
       {/* Immersive Background Orbs */}
-      <div className={`fixed top-[-10%] left-[-10%] w-[50%] h-[50%] bg-${colorName}-500/5 rounded-full blur-[120px] pointer-events-none z-0`} />
-      <div className={`fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-${colorName}-950/10 rounded-full blur-[120px] pointer-events-none z-0`} />
+      <div className={`fixed top-[-10%] left-[-10%] w-[50%] h-[50%] ${colors.glowBg} rounded-full blur-[120px] pointer-events-none z-0`} />
+      <div className={`fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-slate-900/50 rounded-full blur-[120px] pointer-events-none z-0`} />
       
       {/* Scaled Virtual Container */}
       <div 
         ref={containerRef}
-        className="flex flex-col relative z-10"
-        style={{ 
-          width: 1280, 
-          height: 800, 
-          transform: `scale(${scale})`, 
-          transformOrigin: 'center center' 
-        }}
+        className="w-full max-w-[1280px] min-w-[1024px] min-h-[500px] h-fit bg-bento-panel border border-bento-border/50 rounded-2xl shadow-2xl flex flex-col p-8 relative z-10 m-auto shrink-0"
       >
         {/* Cinematic Header */}
         <div className="text-center mb-6 shrink-0">
           <h1 className="text-4xl font-display font-black tracking-tighter text-white uppercase mb-2">
             {title}
           </h1>
-          <div className={`w-32 h-1 bg-${colorName}-500 mx-auto rounded-full opacity-80`} />
+          <div className={`w-32 h-1 ${colors.bg} mx-auto rounded-full opacity-80`} />
         </div>
 
-        <div className="flex-1 flex flex-col min-h-0 gap-6">
-          <div className={state.campaignNotes && state.campaignNotes.trim().length > 0 
-            ? "grid grid-cols-12 gap-6 h-[calc(100%-11.5rem)] shrink-0" 
-            : "grid grid-cols-12 gap-6 flex-1 min-h-0"}>
+        <div className="flex-1 flex flex-col gap-6">
+          <div className="grid grid-cols-12 gap-6 items-stretch">
             {/* Left Column: Turn Tracker (4 cols) */}
-            <div className="col-span-4 bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg h-full flex flex-col overflow-hidden">
+            <div className="col-span-4 bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg h-full flex flex-col overflow-hidden min-h-0">
               <div className="border-b border-bento-border pb-3 mb-4 shrink-0 flex items-center justify-between">
                 <h2 className="text-base font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
                   <Shield className={`w-5 h-5 ${colors.text}`} /> Ordine di Turno
                 </h2>
               </div>
-              <div className="flex-1 overflow-y-auto scrollbar-hide space-y-3 pr-2">
+              <div className="flex-1 overflow-y-auto scrollbar-thin space-y-3 pr-2">
                 {players.length === 0 ? (
                   <div className="text-center py-8 text-slate-600 italic text-sm">Nessun giocatore nell'iniziativa.</div>
                 ) : (
@@ -166,28 +142,58 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
                     return (
                       <div 
                         key={player.id} 
-                        className={`flex items-center justify-between border rounded-xl px-4 py-3.5 transition-all ${
+                        className={`flex flex-col border rounded-xl px-3 py-2.5 transition-all ${
                           isActive
-                            ? `bg-${colorName}-950/20 border-${colorName}-500/40 ring-1 ring-${colorName}-500/10 shadow-lg shadow-${colorName}-950/20`
+                            ? `bg-slate-800 ${colors.border} ring-1 ${colors.ring} shadow-lg ${colors.shadow}`
                             : 'bg-[#0c0d10] border-bento-border'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <span className={`w-6 h-6 rounded-full border font-mono text-xs flex items-center justify-center font-bold transition-colors ${
-                            isActive ? `bg-${colorName}-950/40 border-${colorName}-500 ${colors.textActive}` : 'bg-bento-panel border-bento-border text-slate-400'
-                          }`}>
-                            {index + 1}
-                          </span>
-                          <span className={`font-display font-bold text-base tracking-wide transition-colors ${
-                            isActive ? colors.textActive : 'text-slate-200'
-                          }`}>
-                            {player.name}
-                          </span>
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-3">
+                            <span className={`w-5 h-5 rounded-full border font-mono text-[10px] flex items-center justify-center font-bold transition-colors ${
+                              isActive ? `${colors.glowBg} ${colors.border} ${colors.textActive}` : 'bg-bento-panel border-bento-border text-slate-400'
+                            }`}>
+                              {index + 1}
+                            </span>
+                            <span className={`font-display font-bold text-sm tracking-wide transition-colors ${
+                              isActive ? colors.textActive : 'text-slate-200'
+                            }`}>
+                              {player.name}
+                            </span>
+                          </div>
+                          {isActive && (
+                            <span className={`text-[9px] font-mono font-bold tracking-widest ${colors.text} ${colors.glowBg} px-2 py-0.5 rounded-full flex items-center gap-1 uppercase animate-pulse shrink-0`}>
+                              <Star className={`w-2.5 h-2.5 ${colors.fill}`} /> Attivo
+                            </span>
+                          )}
                         </div>
-                        {isActive && (
-                          <span className={`text-[9px] font-mono font-bold tracking-widest ${colors.text} ${colors.glowBg} px-2 py-0.5 rounded-full flex items-center gap-1 uppercase animate-pulse`}>
-                            <Star className={`w-2.5 h-2.5 ${colors.fill}`} /> Attivo
-                          </span>
+                        {isActive && (player.inventory.length > 0 || player.bonus.length > 0) && (
+                          <div className="mt-4 pt-3 border-t border-bento-border/50 grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                            {player.inventory.length > 0 && (
+                              <div>
+                                <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 font-bold block mb-1.5">Inventario</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {player.inventory.map(item => (
+                                    <span key={item.id} className="text-[11px] bg-[#1a1d23] border border-bento-border/60 px-2 py-1 rounded-md text-slate-300 font-medium leading-none">
+                                      {item.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {player.bonus.length > 0 && (
+                              <div>
+                                <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 font-bold block mb-1.5">Bonus</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {player.bonus.map(item => (
+                                    <span key={item.id} className="text-[11px] bg-[#1a1d23] border border-bento-border/60 px-2 py-1 rounded-md text-slate-300 font-medium leading-none">
+                                      {item.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     );
@@ -202,8 +208,16 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
                 <h2 className="text-base font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
                   <Heart className={`w-5 h-5 ${colors.text}`} /> Stato della Salute
                 </h2>
+                <button
+                  type="button"
+                  onClick={() => setHealthLayout(prev => prev === 'horizontal' ? 'vertical' : 'horizontal')}
+                  className="p-1.5 hover:bg-[#21242c] rounded-md transition-colors text-slate-400 hover:text-slate-200"
+                  title={healthLayout === 'horizontal' ? 'Passa alla vista verticale' : 'Passa alla vista orizzontale'}
+                >
+                  {healthLayout === 'horizontal' ? <GripHorizontal className="w-5 h-5" /> : <GripVertical className="w-5 h-5" />}
+                </button>
               </div>
-              <div className="flex-1 overflow-y-auto scrollbar-hide space-y-6 pr-2">
+              <div className="flex-1 flex flex-col space-y-6 pr-2 overflow-y-auto scrollbar-hide">
                 {healthBars.length === 0 ? (
                   <div className="text-center py-8 text-slate-600 italic text-sm">Nessun tracciatore di salute.</div>
                 ) : (
@@ -212,26 +226,28 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
                       const groupBars = barsByGroup[groupName] || [];
                       if (groupBars.length === 0) return null;
                       return (
-                        <div key={groupName} className="space-y-3">
-                          <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1">
+                        <div key={groupName} className="space-y-3 flex-1 flex flex-col min-h-0">
+                          <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1 shrink-0">
                             <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold bg-[#0c0d10] px-1.5 py-0.5 rounded border border-bento-border/40">
                               {groupName}
                             </span>
                           </div>
-                          <div className="space-y-3">
+                          <div className={`gap-3 flex-1 min-h-0 ${healthLayout === 'vertical' ? 'flex flex-row overflow-x-auto pb-2 pt-2 scrollbar-thin' : 'flex flex-col space-y-3 overflow-y-auto'}`}>
                             {groupBars.map((bar) => renderHealthBarItem(bar))}
                           </div>
                         </div>
                       );
                     })}
                     {ungroupedBars.length > 0 && (
-                      <div className="space-y-3 mt-6">
-                        <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1">
-                          <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold bg-[#0c0d10] px-1.5 py-0.5 rounded border border-bento-border/40">
-                            Senza Gruppo
-                          </span>
-                        </div>
-                        <div className="space-y-3">
+                      <div className="mt-6 flex flex-col space-y-3 flex-1 min-h-0">
+                        {healthGroups.some(g => (barsByGroup[g] || []).length > 0) && (
+                          <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1 shrink-0">
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold bg-[#0c0d10] px-1.5 py-0.5 rounded border border-bento-border/40">
+                              Senza Gruppo
+                            </span>
+                          </div>
+                        )}
+                        <div className={`gap-3 flex-1 min-h-0 ${healthLayout === 'vertical' ? 'flex flex-row overflow-x-auto pb-2 pt-2 scrollbar-thin' : 'flex flex-col space-y-3 overflow-y-auto'}`}>
                           {ungroupedBars.map((bar) => renderHealthBarItem(bar))}
                         </div>
                       </div>
@@ -241,70 +257,132 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
               </div>
             </div>
 
-            {/* Right Column: Dice Roll (3 cols) */}
-            <div className="col-span-3 bg-bento-panel border border-bento-border rounded-xl p-5 md:p-8 flex flex-col items-center justify-center text-center relative overflow-hidden h-full shadow-lg">
-              <div className={`absolute inset-0 bg-radial-gradient from-${colorName}-500/5 via-transparent to-transparent opacity-50 pointer-events-none`} />
+            {/* Right Column: Dice Roll & Schedule (3 cols) */}
+            <div className="col-span-3 flex flex-col gap-4 h-full min-h-0">
               
-              <div className="border-b border-bento-border pb-3 mb-6 w-full">
-                <span className="text-xs uppercase font-mono tracking-widest text-slate-500">Ultimo Lancio</span>
-              </div>
-              
-              {lastRoll ? (
-                <div 
-                  className="relative z-10 transition-transform duration-100"
-                  style={{ animation: triggerShake ? 'sharedDiceShake 0.3s ease-in-out' : 'none' }}
-                >
-                  <span className="text-slate-500 uppercase tracking-widest font-mono text-xs mb-1 block">
-                    Dado {lastRoll.diceType}
-                  </span>
-                  
-                  {lastRoll.label && (
-                    <span className="inline-block mt-1 text-[10px] font-mono font-bold px-2 py-0.5 bg-[#0c0d10] border border-bento-border text-slate-300 rounded uppercase tracking-wider">
-                      {lastRoll.label}
-                    </span>
-                  )}
-                  
-                  <div className="relative">
-                    <span className={`text-7xl font-display font-black tracking-tighter text-white drop-shadow-[0_0_20px_rgba(${rgbValues},0.35)] block my-6`}>
-                      {lastRoll.result}
-                    </span>
-
-                    {sparkles.map(p => (
-                      <div
-                        key={p.id}
-                        className="absolute top-1/2 left-1/2 z-50 pointer-events-none"
-                        style={{
-                          '--ox': `${p.x}px`,
-                          '--oy': `${p.y}px`,
-                          color: colors.text,
-                          animation: 'diceParticleFloatShared 1.5s ease-out forwards'
-                        } as React.CSSProperties}
-                      >
-                        <Sparkles className="w-6 h-6 opacity-80" />
-                      </div>
-                    ))}
-                  </div>
-
-                  {lastRoll.result === parseInt(lastRoll.diceType.substring(1)) && (
-                    <div className={`${colors.text} bg-${colorName}-500/15 border border-${colorName}-500/30 font-semibold uppercase tracking-wider text-[10px] font-mono px-3 py-1 rounded-full inline-flex items-center gap-1.5 animate-pulse`}>
-                      <Sparkles className="w-3.5 h-3.5" /> CRITICO!
-                    </div>
-                  )}
-                  
-                  {lastRoll.result === 1 && (
-                    <div className={`${colors.text} bg-${colorName}-500/15 border border-${colorName}-500/30 font-semibold uppercase tracking-wider text-[10px] font-mono px-3 py-1 rounded-full inline-flex items-center gap-1.5`}>
-                      FALLIMENTO CRITICO!
-                    </div>
-                  )}
+              {/* Dice Roll Box (approx 80%) */}
+              <div className="bg-bento-panel border border-bento-border rounded-xl p-3 md:p-4 flex flex-col items-center justify-center text-center relative overflow-hidden flex-1 shadow-lg min-h-0">
+                <div className={`absolute inset-0 bg-radial-gradient ${colors.glow} via-transparent to-transparent opacity-50 pointer-events-none`} />
+                
+                <div className="border-b border-bento-border pb-2 mb-2 w-full">
+                  <span className="text-xs uppercase font-mono tracking-widest text-slate-500">Ultimo Lancio</span>
                 </div>
-              ) : (
-                <div className="text-slate-600 flex flex-col items-center gap-3">
-                  <div className="w-12 h-12 rounded-full border border-dashed border-bento-border flex items-center justify-center">
-                    <span className="font-mono text-xs">d20</span>
+                
+                {lastRoll ? (
+                  <div 
+                    className="relative z-10 transition-transform duration-100 flex flex-col items-center flex-1 justify-center w-full"
+                    style={{ animation: triggerShake ? 'sharedDiceShake 0.3s ease-in-out' : 'none' }}
+                  >
+                    <span className="text-slate-500 uppercase tracking-widest font-mono text-xs mb-1 block">
+                      Dado {lastRoll.diceType}
+                    </span>
+                    
+                    {lastRoll.label && (
+                      <span className="inline-block mt-1 text-[10px] font-mono font-bold px-2 py-0.5 bg-[#0c0d10] border border-bento-border text-slate-300 rounded uppercase tracking-wider">
+                        {lastRoll.label}
+                      </span>
+                    )}
+                    
+                    <div className="relative">
+                      <span className={`text-5xl lg:text-6xl font-display font-black tracking-tighter text-white drop-shadow-[0_0_20px_rgba(${rgbValues},0.35)] block my-2 ${state.isRollHidden ? 'opacity-30 blur-[2px]' : ''}`}>
+                        {state.isRollHidden ? '?' : lastRoll.result}
+                      </span>
+                      {state.isRollHidden && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-xl lg:text-2xl font-mono font-bold text-amber-500 uppercase tracking-widest bg-slate-900/80 px-4 py-2 rounded-lg border border-amber-500/30 rotate-12 drop-shadow-xl backdrop-blur-sm shadow-xl z-20">
+                            Nascosto
+                          </span>
+                        </div>
+                      )}
+                      
+                      {!state.isRollHidden && sparkles.map(p => (
+                        <div
+                          key={p.id}
+                          className="absolute top-1/2 left-1/2 z-50 pointer-events-none"
+                          style={{
+                            '--ox': `${p.x}px`,
+                            '--oy': `${p.y}px`,
+                            color: colors.text,
+                            animation: 'diceParticleFloatShared 1.5s ease-out forwards'
+                          } as React.CSSProperties}
+                        >
+                          <Sparkles className="w-6 h-6 opacity-80" />
+                        </div>
+                      ))}
+                    </div>
+                    {!state.isRollHidden && lastRoll.result === parseInt(lastRoll.diceType.substring(1)) && (
+                      <div className={`${colors.text} ${colors.bg}/15 border ${colors.border}/30 font-semibold uppercase tracking-wider text-[10px] font-mono px-3 py-1 rounded-full inline-flex items-center gap-1.5 animate-pulse`}>
+                        <Sparkles className="w-3.5 h-3.5" /> CRITICO!
+                      </div>
+                    )}
+                    
+                    {!state.isRollHidden && lastRoll.result === 1 && (
+                      <div className={`${colors.text} ${colors.bg}/15 border ${colors.border}/30 font-semibold uppercase tracking-wider text-[10px] font-mono px-3 py-1 rounded-full inline-flex items-center gap-1.5`}>
+                        FALLIMENTO CRITICO!
+                      </div>
+                    )}
                   </div>
-                  <p className="text-xs italic leading-snug px-4">In attesa del primo lancio...</p>
+                ) : (
+                  <div className="text-slate-600 flex flex-col items-center gap-3 flex-1 justify-center">
+                    <div className="w-12 h-12 rounded-full border border-dashed border-bento-border flex items-center justify-center">
+                      <span className="font-mono text-xs">d20</span>
+                    </div>
+                    <p className="text-xs italic leading-snug px-4">In attesa del primo lancio...</p>
+                  </div>
+                )}
+
+                {/* Roll History Mini-View */}
+                {state.rollHistory && state.rollHistory.length > 1 && (
+                  <div className="mt-2 border-t border-bento-border pt-2 w-full shrink-0">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-display block mb-2 text-left">
+                      Storico
+                    </span>
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                      {state.rollHistory.slice(1).map((roll, idx) => (
+                        <div
+                          key={roll.timestamp + idx}
+                          className="bg-[#0c0d10] border border-bento-border rounded-md py-1 px-2 flex flex-col items-center min-w-[50px] shrink-0"
+                        >
+                          <span className="text-[8px] text-slate-500 font-mono font-bold">
+                            {roll.diceType}
+                          </span>
+                          <span className={`text-sm font-display font-bold ${
+                            roll.result === parseInt(roll.diceType.substring(1))
+                              ? `${colors.textActive}`
+                              : roll.result === 1
+                              ? `${colors.text}`
+                              : 'text-slate-300'
+                          }`}>
+                            {roll.result}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Schedule Box (approx 20%) */}
+              {(state.scheduleDay || state.scheduleTime) && (
+                <div className="bg-bento-panel border border-bento-border rounded-xl p-3 md:p-4 flex flex-col items-center justify-center text-center shadow-lg shrink-0">
+                  <div className="flex items-center gap-3">
+                    {state.scheduleDay && (
+                      <span className={`text-lg font-display font-bold text-slate-200 capitalize`}>
+                        {state.scheduleDay}
+                      </span>
+                    )}
+                    {state.scheduleDay && state.scheduleTime && (
+                      <span className={`text-slate-600 font-light`}>|</span>
+                    )}
+                    {state.scheduleTime && (
+                      <span className={`text-lg font-mono font-bold ${colors.text}`}>
+                        {state.scheduleTime}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
+
             </div>
           </div>
 

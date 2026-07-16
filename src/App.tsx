@@ -279,6 +279,10 @@ export default function App() {
     setState((prev) => ({ ...prev, title: newTitle }));
   };
 
+  const handleScheduleChange = (day: string, time: string) => {
+    setState((prev) => ({ ...prev, scheduleDay: day, scheduleTime: time }));
+  };
+
   const handleAddPlayer = (name: string) => {
     const newPlayer: Player = {
       id: crypto.randomUUID(),
@@ -310,15 +314,30 @@ export default function App() {
 
   // Dice Roller Handlers
   const handleRoll = (diceType: string, result: number, label?: string) => {
-    setState((prev) => ({
-      ...prev,
-      lastRoll: {
-        diceType,
-        result,
-        timestamp: Date.now(),
-        label
-      }
-    }));
+    const newRoll = {
+      diceType,
+      result,
+      timestamp: Date.now(),
+      label
+    };
+    
+    setState((prev) => {
+      const prevHistory = prev.rollHistory || [];
+      const newHistory = [newRoll, ...prevHistory].slice(0, 20); // Keep last 20 rolls
+      return {
+        ...prev,
+        lastRoll: newRoll,
+        rollHistory: newHistory
+      };
+    });
+  };
+
+  const toggleRollVisibility = () => {
+    setState((prev) => ({ ...prev, isRollHidden: !prev.isRollHidden }));
+  };
+
+  const handleClearRollHistory = () => {
+    setState((prev) => ({ ...prev, rollHistory: [] }));
   };
 
   const handleSelectedDiceChange = (dice: string) => {
@@ -533,10 +552,10 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen bg-bento-bg text-slate-100 p-4 md:p-8 flex flex-col font-sans selection:bg-${colorName}-600/30 selection:text-${colorName}-200`}>
+    <div className={`min-h-screen bg-bento-bg text-slate-100 p-4 md:p-8 flex flex-col font-sans selection:bg-slate-600/30 selection:text-slate-200`}>
       
       {/* Immersive background decoration */}
-      <div className={`absolute top-0 left-0 right-0 h-[500px] bg-gradient-radial from-${colorName}-600/5 to-transparent pointer-events-none z-0`} />
+      <div className={`absolute top-0 left-0 right-0 h-[500px] bg-gradient-radial ${colors.glow} to-transparent pointer-events-none z-0`} />
       
       {/* DM Top Banner Bar */}
       <header className={`max-w-7xl mx-auto w-full mb-8 relative ${isSettingsOpen ? 'z-30' : 'z-20'} flex flex-col lg:flex-row items-center justify-between gap-4 border-b border-bento-border pb-5`}>
@@ -610,7 +629,7 @@ export default function App() {
               type="button"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
               className={`p-2 py-2 bg-bento-panel hover:bg-bento-button text-slate-300 border border-bento-border rounded-xl text-xs font-semibold flex items-center justify-center transition-all cursor-pointer h-full ${
-                isSettingsOpen ? `text-slate-100 ring-2 ring-${colorName}-500/20` : ''
+                isSettingsOpen ? `text-slate-100 ring-2 ring-slate-500/20` : ''
               }`}
               title="Apri Impostazioni della Campagna"
             >
@@ -753,7 +772,10 @@ export default function App() {
         {/* Campaign title and Initiative */}
         <CampaignHeader
           title={state.title}
+          scheduleDay={state.scheduleDay}
+          scheduleTime={state.scheduleTime}
           onTitleChange={handleTitleChange}
+          onScheduleChange={handleScheduleChange}
           players={state.players}
           onAddPlayer={handleAddPlayer}
           onRemovePlayer={handleRemovePlayer}
@@ -784,6 +806,7 @@ export default function App() {
               onAddGroup={handleAddGroup}
               onRenameGroup={handleRenameGroup}
               onDeleteGroup={handleDeleteGroup}
+              theme={theme}
             />
           </div>
 
@@ -793,6 +816,10 @@ export default function App() {
               <DiceRoller
                 onRoll={handleRoll}
                 lastRoll={state.lastRoll}
+                rollHistory={state.rollHistory}
+                isRollHidden={state.isRollHidden}
+                onToggleRollVisibility={toggleRollVisibility}
+                onClearHistory={handleClearRollHistory}
                 selectedDice={state.selectedDice}
                 onSelectedDiceChange={handleSelectedDiceChange}
                 theme={theme}

@@ -3,10 +3,12 @@ import { HealthBar, GradientColors } from '../types';
 import { Plus, Trash2, Edit2, ShieldAlert, Heart, Check, X, Sparkles, Folder, Settings2 } from 'lucide-react';
 import { playDamageSound, playHealSound } from '../utils/audio';
 import { HealthBarItem } from './HealthBarItem';
+import { CampaignTheme, getThemeColors } from '../theme';
 
 interface HealthBarsManagerProps {
   healthBars: HealthBar[];
   healthGroups: string[];
+  theme?: CampaignTheme;
   onAddHealthBar: (healthBar: Omit<HealthBar, 'id'>) => void;
   onUpdateHealthBar: (id: string, updated: Partial<HealthBar>) => void;
   onDeleteHealthBar: (id: string) => void;
@@ -27,6 +29,7 @@ const PRESET_COLORS = [
 export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
   healthBars,
   healthGroups,
+  theme = 'crimson',
   onAddHealthBar,
   onUpdateHealthBar,
   onDeleteHealthBar,
@@ -34,6 +37,8 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
   onRenameGroup,
   onDeleteGroup,
 }) => {
+  const colorName = theme === 'sapphire' ? 'blue' : theme === 'crimson' ? 'red' : theme;
+  const colors = getThemeColors(theme as CampaignTheme);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -47,6 +52,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
   const [midColor, setMidColor] = useState('#f59e0b');
   const [highColor, setHighColor] = useState('#10b981');
   const [group, setGroup] = useState('');
+  const [zeroHpText, setZeroHpText] = useState('DEFUNTO');
 
   // Group management states
   const [isManagingGroups, setIsManagingGroups] = useState(false);
@@ -78,6 +84,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
     setMidColor('#f59e0b');
     setHighColor('#10b981');
     setGroup('');
+    setZeroHpText('DEFUNTO');
   };
 
   const handleCreate = (e: React.FormEvent) => {
@@ -96,6 +103,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
         high: highColor,
       },
       group: group || undefined,
+      zeroHpText: zeroHpText.trim() || 'DEFUNTO',
     });
 
     resetForm();
@@ -113,6 +121,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
     setMidColor(bar.gradientColors.mid);
     setHighColor(bar.gradientColors.high);
     setGroup(bar.group || '');
+    setZeroHpText(bar.zeroHpText || 'DEFUNTO');
   };
 
   const handleUpdate = () => {
@@ -130,6 +139,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
         high: highColor,
       },
       group: group || undefined,
+      zeroHpText: zeroHpText.trim() || 'DEFUNTO',
     });
 
     setEditingId(null);
@@ -181,8 +191,8 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
   return (
     <div className="bg-bento-panel border border-bento-border rounded-xl p-6 shadow-xl relative overflow-hidden">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
-        <h2 className="text-base font-semibold uppercase tracking-wider font-display text-slate-200 flex items-center gap-2">
-          <Heart className="w-5 h-5 text-red-500 animate-pulse" />
+        <h2 className={`text-base font-semibold uppercase tracking-wider font-display ${colors.text} flex items-center gap-2`}>
+          <Heart className={`w-5 h-5 ${colors.text} animate-pulse`} />
           Barre della Vita
         </h2>
         
@@ -191,7 +201,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
             type="button"
             onClick={() => setIsManagingGroups(!isManagingGroups)}
             className={`px-2.5 py-1.5 bg-[#0c0d10] hover:bg-bento-button text-slate-300 border border-bento-border rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-              isManagingGroups ? 'ring-1 ring-red-500/40 text-red-400 border-red-500/30' : ''
+              isManagingGroups ? 'ring-1 ${colors.ring} ${colors.textActive} ${colors.border}/30' : ''
             }`}
             title="Gestisci i gruppi di barre vita"
           >
@@ -203,7 +213,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
             <button
               type="button"
               onClick={() => { resetForm(); setIsAdding(true); }}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-md shadow-red-950/25 border border-red-500"
+              className={`px-3 py-1.5 ${colors.text} hover:${colors.textActive} bg-bento-panel border border-bento-border hover:border-slate-600 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-md`}
             >
               <Plus className="w-3.5 h-3.5" />
               Nuova Barra
@@ -216,7 +226,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
       {isManagingGroups && (
         <div className="bg-[#0c0d10] border border-bento-border rounded-xl p-4 mb-6 space-y-4 animate-fadeIn">
           <div className="flex items-center justify-between border-b border-bento-border pb-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-red-500 font-mono flex items-center gap-1.5">
+            <h3 className={`text-xs font-bold uppercase tracking-wider ${colors.text} font-mono flex items-center gap-1.5`}>
               <Folder className="w-3.5 h-3.5" /> Gestione Gruppi
             </h3>
             <button
@@ -234,7 +244,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
               placeholder="Nome nuovo gruppo..."
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
-              className="bg-bento-panel border border-bento-border focus:border-red-500/50 text-slate-100 text-xs rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-500/30 flex-grow"
+              className={`bg-bento-panel border border-bento-border focus:${colors.border}/50 text-slate-100 text-xs rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:${colors.ring} flex-grow`}
               maxLength={20}
             />
             <button
@@ -245,7 +255,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                   setNewGroupName('');
                 }
               }}
-              className="px-3 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-semibold transition-all cursor-pointer"
+              className={`px-3 py-2 ${colors.bg} ${colors.hoverBg} text-white rounded-lg text-xs font-semibold transition-all cursor-pointer`}
             >
               Aggiungi
             </button>
@@ -259,7 +269,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                 <div key={g} className="flex items-center justify-between px-3 py-2 bg-bento-panel/30 border border-bento-border rounded-lg text-xs">
                   {deletingGroupName === g ? (
                     <div className="flex items-center justify-between flex-grow animate-fadeIn">
-                      <span className="text-[11px] text-red-400 font-semibold font-sans">Eliminare il gruppo "{g}"?</span>
+                      <span className={`text-[11px] ${colors.textActive} font-semibold font-sans`}>Eliminare il gruppo "{g}"?</span>
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
@@ -267,7 +277,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                             onDeleteGroup(g);
                             setDeletingGroupName(null);
                           }}
-                          className="px-2 py-1 bg-red-600 hover:bg-red-500 rounded text-white text-[10px] font-bold cursor-pointer transition-colors"
+                          className={`px-2 py-1 ${colors.bg} ${colors.hoverBg} rounded text-white text-[10px] font-bold cursor-pointer transition-colors`}
                         >
                           Sì
                         </button>
@@ -286,7 +296,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                         type="text"
                         value={tempGroupName}
                         onChange={(e) => setTempGroupName(e.target.value)}
-                        className="bg-bento-panel border border-bento-border focus:border-red-500/50 text-slate-100 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-red-500/30 flex-grow"
+                        className={`bg-bento-panel border border-bento-border focus:${colors.border}/50 text-slate-100 text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:${colors.ring} flex-grow`}
                         maxLength={20}
                         autoFocus
                       />
@@ -321,7 +331,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                             setTempGroupName(g);
                             setDeletingGroupName(null);
                           }}
-                          className="text-slate-400 hover:text-red-400 p-1 rounded hover:bg-bento-panel transition-colors cursor-pointer"
+                          className={`text-slate-400 hover:${colors.textActive} p-1 rounded hover:bg-bento-panel transition-colors cursor-pointer`}
                           title="Rinomina"
                         >
                           <Edit2 className="w-3 h-3" />
@@ -332,7 +342,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                             setDeletingGroupName(g);
                             setEditingGroupName(null);
                           }}
-                          className="text-slate-500 hover:text-red-500 p-1 rounded hover:bg-bento-panel transition-colors cursor-pointer"
+                          className={`text-slate-500 hover:${colors.text} p-1 rounded hover:bg-bento-panel transition-colors cursor-pointer`}
                           title="Elimina"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -352,7 +362,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
         <form onSubmit={editingId ? (e) => { e.preventDefault(); handleUpdate(); } : handleCreate} 
               className="bg-[#0c0d10] border border-bento-border rounded-xl p-5 mb-6 space-y-4">
           <div className="flex items-center justify-between border-b border-bento-border pb-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-red-500 font-mono">
+            <h3 className={`text-xs font-bold uppercase tracking-wider ${colors.text} font-mono`}>
               {editingId ? 'Modifica Barra Vita' : 'Crea Nuova Barra Vita'}
             </h3>
             <button
@@ -373,7 +383,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                 placeholder="Nome bersaglio..."
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-bento-panel border border-bento-border focus:border-red-500/50 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-500/30"
+                className={`w-full bg-bento-panel border border-bento-border focus:${colors.border}/50 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:${colors.ring}`}
                 maxLength={30}
                 required
               />
@@ -385,13 +395,26 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
               <select
                 value={group}
                 onChange={(e) => setGroup(e.target.value)}
-                className="w-full bg-bento-panel border border-bento-border focus:border-red-500/50 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-500/30 font-sans"
+                className={`w-full bg-bento-panel border border-bento-border focus:${colors.border}/50 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:${colors.ring} font-sans`}
               >
                 <option value="">Nessun Gruppo (Senza Gruppo)</option>
                 {healthGroups.map((g) => (
                   <option key={g} value={g}>{g}</option>
                 ))}
               </select>
+            </div>
+
+            {/* Zero HP Text */}
+            <div className="space-y-1 md:col-span-2">
+              <label className="text-xs text-slate-400 font-medium">Testo a 0 HP (es. DEFUNTO)</label>
+              <input
+                type="text"
+                placeholder="DEFUNTO"
+                value={zeroHpText}
+                onChange={(e) => setZeroHpText(e.target.value)}
+                className={`w-full bg-bento-panel border border-bento-border focus:${colors.border}/50 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:${colors.ring} uppercase font-mono tracking-wider`}
+                maxLength={20}
+              />
             </div>
 
             {/* Max & Current Values */}
@@ -408,7 +431,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                     setMaxValue(val);
                     if (currentValue > val) setCurrentValue(val);
                   }}
-                  className="w-full bg-bento-panel border border-bento-border focus:border-red-500/50 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-500/30 font-mono"
+                  className={`w-full bg-bento-panel border border-bento-border focus:${colors.border}/50 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:${colors.ring} font-mono`}
                 />
               </div>
               <div className="space-y-1">
@@ -422,7 +445,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                     const val = parseInt(e.target.value) || 0;
                     setCurrentValue(Math.min(val, maxValue));
                   }}
-                  className="w-full bg-bento-panel border border-bento-border focus:border-red-500/50 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-red-500/30 font-mono"
+                  className={`w-full bg-bento-panel border border-bento-border focus:${colors.border}/50 text-slate-100 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:${colors.ring} font-mono`}
                 />
               </div>
             </div>
@@ -437,7 +460,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                   type="radio"
                   checked={colorMode === 'static'}
                   onChange={() => setColorMode('static')}
-                  className="accent-red-600"
+                  className="accent-slate-500"
                 />
                 Colore Singolo Statico
               </label>
@@ -446,7 +469,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                   type="radio"
                   checked={colorMode === 'gradient'}
                   onChange={() => setColorMode('gradient')}
-                  className="accent-red-600"
+                  className="accent-slate-500"
                 />
                 Sfocatura / Gradiente a 3 livelli (Alto/Medio/Basso)
               </label>
@@ -486,7 +509,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
               <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider block">Colori della salute</span>
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-red-500 font-semibold block">Basso livello (≤ 33%)</span>
+                  <span className={`text-[10px] ${colors.text} font-semibold block`}>Basso livello (≤ 33%)</span>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
@@ -498,7 +521,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] text-red-400 font-semibold block">Medio livello (34-66%)</span>
+                  <span className={`text-[10px] ${colors.textActive} font-semibold block`}>Medio livello (34-66%)</span>
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
@@ -536,7 +559,7 @@ export const HealthBarsManager: React.FC<HealthBarsManagerProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-red-600 hover:bg-red-500 border border-red-500 text-white font-semibold rounded-lg text-xs transition-colors cursor-pointer"
+              className={`px-4 py-2 ${colors.bg} ${colors.hoverBg} border ${colors.border} text-white font-semibold rounded-lg text-xs transition-colors cursor-pointer`}
             >
               {editingId ? 'Aggiorna Barra' : 'Crea Barra'}
             </button>

@@ -19,6 +19,7 @@ interface HealthBarItemProps {
   setIsMouseDown: (val: boolean) => void;
   handleSegmentInteraction: (bar: HealthBar, segValue: number) => void;
   readOnly?: boolean;
+  layout?: 'horizontal' | 'vertical';
 }
 
 export const HealthBarItem: React.FC<HealthBarItemProps> = ({
@@ -30,7 +31,8 @@ export const HealthBarItem: React.FC<HealthBarItemProps> = ({
   activeBarIdRef,
   setIsMouseDown,
   handleSegmentInteraction,
-  readOnly = false
+  readOnly = false,
+  layout = 'horizontal'
 }) => {
   const [particles, setParticles] = useState<Particle[]>([]);
   const [flashState, setFlashState] = useState<'damage' | 'heal' | null>(null);
@@ -85,6 +87,104 @@ export const HealthBarItem: React.FC<HealthBarItemProps> = ({
 
   const glowShadow = `0 0 15px ${activeColor}70`;
   const inactiveColor = activeColor; 
+
+  
+  if (layout === 'vertical') {
+    return (
+      <>
+        <style>{`
+          @keyframes healthParticleFloat {
+            0% { transform: translate(calc(-50% + var(--ox)), -50%) scale(0.5); opacity: 0; }
+            20% { transform: translate(calc(-50% + var(--ox)), -120%) scale(1.3); opacity: 1; }
+            100% { transform: translate(calc(-50% + var(--ox)), -250%) scale(0.8); opacity: 0; }
+          }
+          @keyframes healthShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+          }
+        `}</style>
+        <div 
+          className={`bg-[#0c0d10] border border-bento-border rounded-xl p-2 pr-3 ${readOnly ? '' : 'hover:border-slate-600'} transition-all relative group flex flex-row items-center justify-center gap-1.5 h-full min-h-[160px] max-h-[300px] min-w-[50px] shrink-0`}
+          style={{ animation: isShaking ? 'healthShake 0.15s ease-in-out 2' : 'none' }}
+        >
+          {/* Name Section */}
+          <div className="flex items-center justify-center h-full">
+            <span className="font-display font-bold text-slate-200 tracking-wider text-[13px] leading-none [writing-mode:vertical-rl] rotate-180 uppercase truncate max-h-[140px]">
+              {bar.name}
+            </span>
+          </div>
+
+          {/* Bar Section */}
+          <div className="flex flex-col items-center justify-between h-full w-[28px]">
+            {/* The Bar */}
+            <div className="relative flex-grow flex justify-center w-full mb-1">
+              <div 
+                className={`flex flex-col-reverse w-full h-full rounded bg-[#1a1d23] overflow-hidden border border-[#2d333d] ${bar.maxValue > 60 ? 'gap-0' : bar.maxValue > 30 ? 'gap-[1px]' : 'gap-[1px]'} p-[2px] select-none ${readOnly ? '' : 'cursor-pointer'} transition-shadow relative z-10 ${
+                  flashState === 'damage' ? 'ring-2 ring-[#ff0055]/30 shadow-[inset_0_0_10px_rgba(255,0,85,0.2)]' : 
+                  flashState === 'heal' ? 'ring-2 ring-[#00ff88]/30 shadow-[inset_0_0_10px_rgba(0,255,136,0.2)]' : ''
+                }`}
+                onMouseDown={() => {
+                  if (readOnly) return;
+                  setIsMouseDown(true);
+                  activeBarIdRef.current = bar.id;
+                }}
+              >
+                {segments.map((segIndex) => {
+                  const isSegmentActive = segIndex <= bar.currentValue;
+                  const segValue = segIndex;
+                  return (
+                    <div
+                      key={segIndex}
+                      className="w-full flex-grow rounded-[2px] transition-all duration-200"
+                      style={{
+                        backgroundColor: isSegmentActive ? activeColor : inactiveColor,
+                        opacity: isSegmentActive ? 1 : 0.08,
+                        boxShadow: isSegmentActive ? glowShadow : 'none',
+                        transform: isSegmentActive ? 'scale(1)' : 'scale(0.98)',
+                      }}
+                      onClick={() => { if (!readOnly) { playClickSound(); handleSegmentInteraction(bar, segValue); } }}
+                      onMouseEnter={() => {
+                        if (readOnly) return;
+                        if (isMouseDown && activeBarIdRef.current === bar.id) {
+                          handleSegmentInteraction(bar, segValue);
+                        }
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              {particles.map(p => (
+                <div
+                  key={p.id}
+                  className="absolute top-1/2 left-1/2 z-50 pointer-events-none font-display font-black text-xl"
+                  style={{
+                    '--ox': `${p.offsetX}px`,
+                    color: p.value > 0 ? '#00ff88' : '#ff0055',
+                    textShadow: `0 0 10px ${p.value > 0 ? '#00ff88' : '#ff0055'}`,
+                    animation: 'healthParticleFloat 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards'
+                  } as React.CSSProperties}
+                >
+                  {p.value > 0 ? '+' : ''}{p.value}
+                </div>
+              ))}
+            </div>
+
+            {/* Numbers and Percentage at Bottom */}
+            <div className="font-mono text-[10px] text-slate-400 shrink-0 flex flex-col items-center leading-none">
+              <div className="flex items-center whitespace-nowrap">
+                <span className="font-bold text-slate-100 text-[11px]">{bar.currentValue}</span>
+                <span className="text-slate-600 mx-[1px]">/</span>
+                <span>{bar.maxValue}</span>
+              </div>
+              <span className="text-slate-500 text-[9px] mt-0.5 font-bold">({Math.round(percentage)}%)</span>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
 
   return (
     <>
@@ -157,14 +257,14 @@ export const HealthBarItem: React.FC<HealthBarItemProps> = ({
             </button>
           </div>
         )}
-        <div className={`flex justify-between items-center mb-2.5 relative z-10 transition-all duration-200 ${readOnly ? 'pr-2' : 'pr-2 group-hover:pr-[220px]'}`}>
+        <div className={`flex justify-between items-center mb-2.5 relative z-10 transition-all duration-200 ${readOnly ? 'pr-2' : 'pr-2 group-hover:pr-[220px] group-focus-within:pr-[220px]'}`}>
           <div className="flex items-center gap-2 min-w-0">
             <span className="font-display font-bold text-slate-200 tracking-wide text-sm md:text-base truncate">
               {bar.name}
             </span>
             {bar.currentValue === 0 && (
               <span className="shrink-0 text-[10px] font-bold text-red-500 bg-red-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <ShieldAlert className="w-3 h-3" /> DEFUNTO
+                <ShieldAlert className="w-3 h-3" /> {bar.zeroHpText || 'DEFUNTO'}
               </span>
             )}
           </div>

@@ -6,7 +6,10 @@ import { CampaignTheme, getThemeColors } from '../theme';
 
 interface CampaignHeaderProps {
   title: string;
+  scheduleDay?: string;
+  scheduleTime?: string;
   onTitleChange: (newTitle: string) => void;
+  onScheduleChange: (day: string, time: string) => void;
   players: Player[];
   onAddPlayer: (name: string) => void;
   onRemovePlayer: (id: string) => void;
@@ -25,7 +28,10 @@ interface CampaignHeaderProps {
 
 export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   title,
+  scheduleDay = '',
+  scheduleTime = '',
   onTitleChange,
+  onScheduleChange,
   players,
   onAddPlayer,
   onRemovePlayer,
@@ -42,8 +48,12 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   setIsMuted,
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingSchedule, setIsEditingSchedule] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
+  const [tempScheduleDay, setTempScheduleDay] = useState(scheduleDay);
+  const [tempScheduleTime, setTempScheduleTime] = useState(scheduleTime);
   const [newPlayerName, setNewPlayerName] = useState('');
+
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const colors = getThemeColors(theme);
@@ -86,12 +96,27 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
     }
   };
 
+  const handleScheduleSubmit = () => {
+    onScheduleChange(tempScheduleDay.trim(), tempScheduleTime.trim());
+    setIsEditingSchedule(false);
+  };
+
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleTitleSubmit();
     } else if (e.key === 'Escape') {
       setTempTitle(title);
       setIsEditingTitle(false);
+    }
+  };
+
+  const handleScheduleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleScheduleSubmit();
+    } else if (e.key === 'Escape') {
+      setTempScheduleDay(scheduleDay);
+      setTempScheduleTime(scheduleTime);
+      setIsEditingSchedule(false);
     }
   };
 
@@ -135,7 +160,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
   return (
     <div className="bg-bento-panel border border-bento-border rounded-xl p-6 shadow-xl relative overflow-hidden">
       {/* Visual background decoration */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-red-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className={`absolute top-0 right-0 w-64 h-64 ${colors.glowBg} rounded-full blur-3xl pointer-events-none`} />
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-glow rounded-full blur-3xl pointer-events-none" />
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start relative z-10">
@@ -145,43 +170,100 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
           <span className={`text-xs uppercase font-mono tracking-widest ${colors.text} font-semibold mb-1`}>
             Campagna Corrente
           </span>
-          {isEditingTitle ? (
-            <div className="flex items-center gap-2 w-full">
-              <input
-                type="text"
-                value={tempTitle}
-                onChange={(e) => setTempTitle(e.target.value)}
-                onBlur={handleTitleSubmit}
-                onKeyDown={handleTitleKeyDown}
-                className={`text-2xl md:text-3xl font-display font-bold text-slate-100 bg-[#0c0d10] border border-bento-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-${colorName}-500/50 w-full`}
-                autoFocus
-                maxLength={60}
-              />
-              <button
-                onClick={handleTitleSubmit}
-                className={`p-2 ${colors.bg} text-white border ${colors.border} ${colors.hoverBg} rounded-lg transition-colors shadow-lg ${colors.shadow} cursor-pointer`}
-                title="Salva Titolo"
-              >
-                <Check className="w-5 h-5" />
-              </button>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center flex-wrap gap-x-4 gap-y-2">
+              {/* Title Section */}
+              <div className="flex items-center gap-2 group/title">
+                {isEditingTitle ? (
+                  <div className="flex items-center gap-2 w-full">
+                    <input
+                      type="text"
+                      value={tempTitle}
+                      onChange={(e) => setTempTitle(e.target.value)}
+                      onKeyDown={handleTitleKeyDown}
+                      className={`text-2xl md:text-3xl font-display font-bold text-slate-100 bg-[#0c0d10] border border-bento-border rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:${colors.ring} w-full`}
+                      autoFocus
+                      maxLength={60}
+                      placeholder="Nome Campagna"
+                    />
+                    <button
+                      onClick={handleTitleSubmit}
+                      className={`p-1.5 ${colors.bg} text-white border ${colors.border} ${colors.hoverBg} rounded-lg transition-colors shadow-lg ${colors.shadow} cursor-pointer shrink-0`}
+                      title="Salva Titolo"
+                    >
+                      <Check className="w-5 h-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <h1 className="text-2xl md:text-3xl font-display font-bold text-slate-100 tracking-wide line-clamp-1">
+                      {title || "Senza Nome"}
+                    </h1>
+                    <button
+                      onClick={() => {
+                        setTempTitle(title);
+                        setIsEditingTitle(true);
+                      }}
+                      className={`opacity-0 group-hover/title:opacity-100 focus:opacity-100 p-1.5 text-slate-400 hover:${colors.text} hover:bg-[#21242c] rounded-md transition-all cursor-pointer shrink-0`}
+                      title="Modifica Titolo"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {!isEditingTitle && <span className="text-slate-600 font-light hidden md:inline">|</span>}
+
+              {/* Schedule Section */}
+              <div className="flex items-center gap-2 group/schedule">
+                {isEditingSchedule ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={tempScheduleDay}
+                      onChange={(e) => setTempScheduleDay(e.target.value)}
+                      onKeyDown={handleScheduleKeyDown}
+                      className={`text-sm md:text-base font-display text-slate-300 bg-[#0c0d10] border border-bento-border rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:${colors.ring} w-[120px]`}
+                      placeholder="Giorno"
+                      autoFocus
+                    />
+                    <input
+                      type="time"
+                      value={tempScheduleTime}
+                      onChange={(e) => setTempScheduleTime(e.target.value)}
+                      onKeyDown={handleScheduleKeyDown}
+                      className={`text-sm md:text-base font-display text-slate-300 bg-[#0c0d10] border border-bento-border rounded-lg px-3 py-1 focus:outline-none focus:ring-2 focus:${colors.ring} w-[110px]`}
+                    />
+                    <button
+                      onClick={handleScheduleSubmit}
+                      className={`p-1.5 ${colors.bg} text-white border ${colors.border} ${colors.hoverBg} rounded-lg transition-colors shadow-lg ${colors.shadow} cursor-pointer`}
+                      title="Salva Programmazione"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-lg md:text-xl text-slate-400 font-normal">
+                      {(scheduleDay || scheduleTime) ? [scheduleDay, scheduleTime].filter(Boolean).join(' - ') : <span className="text-sm italic text-slate-500">Imposta orario</span>}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setTempScheduleDay(scheduleDay || '');
+                        setTempScheduleTime(scheduleTime || '');
+                        setIsEditingSchedule(true);
+                      }}
+                      className={`opacity-0 group-hover/schedule:opacity-100 focus:opacity-100 p-1.5 text-slate-400 hover:${colors.text} hover:bg-[#21242c] rounded-md transition-all cursor-pointer`}
+                      title="Modifica Programmazione"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="flex items-center gap-3 group">
-              <h1 className="text-2xl md:text-3xl font-display font-bold text-slate-100 tracking-wide line-clamp-1">
-                {title || "Senza Nome"}
-              </h1>
-              <button
-                onClick={() => {
-                  setTempTitle(title);
-                  setIsEditingTitle(true);
-                }}
-                className={`opacity-0 group-hover:opacity-100 focus:opacity-100 p-1.5 text-slate-400 hover:${colors.text} hover:bg-[#21242c] rounded-md transition-all cursor-pointer`}
-                title="Modifica Titolo"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+          </div>
           {/* Integrated Notes Area */}
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 w-full">
             {/* Master Notes */}
@@ -209,7 +291,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                 value={notes}
                 onChange={(e) => onNotesChange(e.target.value)}
                 placeholder="Scrivi qui i tuoi appunti privati della sessione..."
-                className={`w-full h-28 bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-xs rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-y font-sans`}
+                className={`w-full h-28 bg-[#0c0d10] border border-bento-border focus:${colors.border} text-slate-200 placeholder-slate-600 text-xs rounded-lg p-3 focus:outline-none focus:ring-1 focus:${colors.ring} leading-relaxed resize-y font-sans`}
               />
             </div>
 
@@ -238,7 +320,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                 value={campaignNotes}
                 onChange={(e) => onCampaignNotesChange(e.target.value)}
                 placeholder="Scrivi qui gli appunti visibili ai giocatori nella schermata Condivisa..."
-                className={`w-full h-28 bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-xs rounded-lg p-3 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-y font-sans`}
+                className={`w-full h-28 bg-[#0c0d10] border border-bento-border focus:${colors.border} text-slate-200 placeholder-slate-600 text-xs rounded-lg p-3 focus:outline-none focus:ring-1 focus:${colors.ring} leading-relaxed resize-y font-sans`}
               />
             </div>
           </div>
@@ -304,7 +386,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                     value={notes}
                     onChange={(e) => onNotesChange(e.target.value)}
                     placeholder="Scrivi qui i tuoi appunti privati della sessione..."
-                    className={`w-full flex-grow bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-sm rounded-lg p-4 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-y font-sans`}
+                    className={`w-full flex-grow bg-[#0c0d10] border border-bento-border focus:${colors.border} text-slate-200 placeholder-slate-600 text-sm rounded-lg p-4 focus:outline-none focus:ring-1 focus:${colors.ring} leading-relaxed resize-y font-sans`}
                   />
                   
                   {/* Matching search highlights panel inside modal */}
@@ -396,7 +478,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                     value={campaignNotes}
                     onChange={(e) => onCampaignNotesChange(e.target.value)}
                     placeholder="Scrivi qui gli appunti visibili ai giocatori nella schermata Condivisa..."
-                    className={`w-full flex-grow bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/40 text-slate-200 placeholder-slate-600 text-sm rounded-lg p-4 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/20 leading-relaxed resize-y font-sans`}
+                    className={`w-full flex-grow bg-[#0c0d10] border border-bento-border focus:${colors.border} text-slate-200 placeholder-slate-600 text-sm rounded-lg p-4 focus:outline-none focus:ring-1 focus:${colors.ring} leading-relaxed resize-y font-sans`}
                   />
                   
                   {/* Matching search highlights panel inside modal */}
@@ -447,7 +529,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
               placeholder="Nome nuovo giocatore..."
               value={newPlayerName}
               onChange={(e) => setNewPlayerName(e.target.value)}
-              className={`bg-[#0c0d10] border border-bento-border focus:border-${colorName}-500/50 text-slate-100 placeholder-slate-500 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-${colorName}-500/30 flex-grow`}
+              className={`bg-[#0c0d10] border border-bento-border focus:${colors.border} text-slate-100 placeholder-slate-500 text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:${colors.ring} flex-grow`}
               maxLength={24}
             />
             <button
@@ -483,7 +565,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                       isDragged
                         ? 'opacity-30 bg-[#21242c]/20 border-dashed border-[#2d3139] scale-95'
                         : isOver
-                        ? `bg-${colorName}-500/10 border-${colorName}-500/50 translate-y-1`
+                        ? `${colors.glowBg} ${colors.border} translate-y-1`
                         : 'bg-[#0c0d10] border-bento-border hover:bg-[#21242c] hover:border-slate-600'
                     }`}
                   >

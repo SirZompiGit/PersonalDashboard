@@ -32,6 +32,7 @@ export interface HealthBar {
   staticColor: string;
   gradientColors: GradientColors;
   group?: string; // Optional group name for categorization
+  zeroHpText?: string; // Custom text when HP is 0
 }
 
 export interface RollResult {
@@ -43,11 +44,15 @@ export interface RollResult {
 
 export interface CampaignState {
   title: string;
+  scheduleDay?: string;
+  scheduleTime?: string;
   players: Player[];
   healthBars: HealthBar[];
   notes: string; // Used as Master Notes
   campaignNotes?: string; // Used as Campaign Notes
   lastRoll: RollResult | null;
+  rollHistory?: RollResult[];
+  isRollHidden?: boolean;
   selectedDice: string;
   activePlayerId: string | null;
   theme?: CampaignTheme;

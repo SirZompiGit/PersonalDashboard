@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { RollResult } from '../types';
-import { Sparkles, RotateCcw, Edit2, Trash2, Plus, Check, X, Tag } from 'lucide-react';
+import { Sparkles, RotateCcw, Edit2, Trash2, Plus, Check, X, Tag, Eye, EyeOff } from 'lucide-react';
 import { playRollSound, playCritSuccessSound, playCritFailSound } from '../utils/audio';
 import { CampaignTheme, getThemeColors } from '../theme';
 
 interface DiceRollerProps {
   onRoll: (diceType: string, result: number, label?: string) => void;
   lastRoll: RollResult | null;
+  rollHistory?: RollResult[];
+  isRollHidden?: boolean;
+  onToggleRollVisibility?: () => void;
+  onClearHistory?: () => void;
   selectedDice: string;
   onSelectedDiceChange: (dice: string) => void;
   theme?: CampaignTheme;
@@ -19,6 +23,10 @@ interface DiceRollerProps {
 export const DiceRoller: React.FC<DiceRollerProps> = ({
   onRoll,
   lastRoll,
+  rollHistory = [],
+  isRollHidden = false,
+  onToggleRollVisibility,
+  onClearHistory,
   selectedDice,
   onSelectedDiceChange,
   theme = 'crimson',
@@ -30,7 +38,6 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
   const diceTypes = ['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'];
   const [isRolling, setIsRolling] = useState(false);
   const [tempNumber, setTempNumber] = useState<number | null>(null);
-  const [history, setHistory] = useState<RollResult[]>([]);
   const [triggerShake, setTriggerShake] = useState(false);
   const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number }[]>([]);
 
@@ -44,17 +51,6 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
 
   const colors = getThemeColors(theme as CampaignTheme);
   const colorName = theme === 'sapphire' ? 'blue' : theme === 'crimson' ? 'red' : theme;
-
-  // Update history internally when a new roll comes in
-  useEffect(() => {
-    if (lastRoll) {
-      setHistory((prev) => {
-        // Avoid duplicate items in history by matching timestamp
-        if (prev.some((r) => r.timestamp === lastRoll.timestamp)) return prev;
-        return [lastRoll, ...prev.slice(0, 9)]; // Keep last 10 rolls
-      });
-    }
-  }, [lastRoll]);
 
   const rollDice = () => {
     if (isRolling) return;
@@ -106,10 +102,6 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
     }, 60);
   };
 
-  const clearHistory = () => {
-    setHistory([]);
-  };
-
   // Convert theme name to hexadecimal color representation for particles
   const particleColorHex = 
     theme === 'emerald' ? '#10b981' : 
@@ -126,13 +118,13 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
 
   return (
     <div className={`bg-bento-panel border border-bento-border rounded-xl p-6 shadow-xl flex flex-col h-full relative overflow-hidden transition-all duration-300 ${
-      triggerShake ? `shake-animation border-${colorName}-500 shadow-${colorName}-950/40` : ''
+      triggerShake ? `shake-animation ${colors.border} ${colors.shadow}` : ''
     }`}>
       {/* Decorative top grid */}
-      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-${colorName}-500/50 to-transparent`} />
+      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent`} />
 
       <h2 className="text-sm font-semibold uppercase tracking-wider font-display text-slate-200 mb-4 flex items-center gap-2">
-        <span className={`w-2 h-2 rounded-full bg-${colorName}-500 animate-pulse`} />
+        <span className={`w-2 h-2 rounded-full ${colors.bg} animate-pulse`} />
         Lancio dei Dadi
       </h2>
 
@@ -148,7 +140,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
               disabled={isRolling}
               className={`py-2 px-1 text-center font-mono font-bold text-sm rounded-lg border transition-all cursor-pointer ${
                 isSelected
-                  ? `${colors.bg} text-white border-${colorName}-500 shadow-md shadow-${colorName}-500/15`
+                  ? `${colors.bg} text-white ${colors.border} shadow-md ${colors.shadow}`
                   : 'bg-[#0c0d10] text-slate-400 border-bento-border hover:text-slate-200 hover:border-slate-500'
               }`}
             >
@@ -168,8 +160,8 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
           <button
             type="button"
             onClick={() => setIsManagingLabels(!isManagingLabels)}
-            className={`text-[10px] font-semibold text-slate-500 hover:text-red-400 transition-colors cursor-pointer ${
-              isManagingLabels ? 'text-red-400 underline' : ''
+            className={`text-[10px] font-semibold text-slate-500 hover:${colors.textActive} transition-colors cursor-pointer ${
+              isManagingLabels ? '${colors.textActive} underline' : ''
             }`}
           >
             Gestisci Etichette
@@ -180,7 +172,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
           value={selectedLabel}
           onChange={(e) => setSelectedLabel(e.target.value)}
           disabled={isRolling}
-          className="w-full bg-[#0c0d10] border border-bento-border text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-red-500/30 cursor-pointer"
+          className={`w-full bg-[#0c0d10] border border-bento-border text-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:${colors.ring} cursor-pointer`}
         >
           <option value="">Nessuna Etichetta</option>
           {diceLabels.map((lbl) => (
@@ -193,7 +185,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
       {isManagingLabels && (
         <div className="bg-[#0c0d10] border border-bento-border rounded-xl p-3.5 mb-4 space-y-3 animate-fadeIn text-left">
           <div className="flex items-center justify-between border-b border-bento-border pb-1.5">
-            <span className="text-[10px] uppercase font-mono font-bold text-red-500">Gestisci Etichette</span>
+            <span className={`text-[10px] uppercase font-mono font-bold ${colors.text}`}>Gestisci Etichette</span>
             <button
               type="button"
               onClick={() => { setIsManagingLabels(false); setEditingLabelName(null); }}
@@ -210,7 +202,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
               placeholder="Nuova etichetta..."
               value={newLabelName}
               onChange={(e) => setNewLabelName(e.target.value)}
-              className="bg-bento-panel border border-bento-border focus:border-red-500/50 text-slate-100 text-xs rounded px-2.5 py-1.5 focus:outline-none flex-grow"
+              className={`bg-bento-panel border border-bento-border focus:${colors.border}/50 text-slate-100 text-xs rounded px-2.5 py-1.5 focus:outline-none flex-grow`}
               maxLength={24}
             />
             <button
@@ -221,7 +213,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                   setNewLabelName('');
                 }
               }}
-              className="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-xs font-semibold cursor-pointer"
+              className={`px-3 py-1.5 ${colors.bg} ${colors.hoverBg} text-white rounded text-xs font-semibold cursor-pointer`}
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -233,7 +225,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
               <div key={lbl} className="flex items-center justify-between px-2.5 py-1.5 bg-bento-panel/30 border border-bento-border rounded text-xs">
                 {deletingLabelName === lbl ? (
                   <div className="flex items-center justify-between flex-grow animate-fadeIn">
-                    <span className="text-[10px] text-red-400 font-semibold">Eliminare "{lbl}"?</span>
+                    <span className={`text-[10px] ${colors.textActive} font-semibold`}>Eliminare "{lbl}"?</span>
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -241,7 +233,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                           onDeleteDiceLabel?.(lbl);
                           setDeletingLabelName(null);
                         }}
-                        className="px-1.5 py-0.5 bg-red-600 hover:bg-red-500 rounded text-white text-[9px] font-bold cursor-pointer transition-colors"
+                        className={`px-1.5 py-0.5 ${colors.bg} ${colors.hoverBg} rounded text-white text-[9px] font-bold cursor-pointer transition-colors`}
                       >
                         Sì
                       </button>
@@ -305,7 +297,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                           setDeletingLabelName(lbl);
                           setEditingLabelName(null);
                         }}
-                        className="text-slate-500 hover:text-red-500 p-0.5 rounded transition-colors cursor-pointer"
+                        className={`text-slate-500 hover:${colors.text} p-0.5 rounded transition-colors cursor-pointer`}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -320,17 +312,28 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
 
       {/* Core Roll Display Screen */}
       <div className="flex-grow flex flex-col items-center justify-center bg-[#0c0d10] border border-bento-border rounded-xl p-6 mb-5 relative min-h-[140px]">
+        {/* Toggle Roll Visibility Button */}
+        {onToggleRollVisibility && lastRoll && !isRolling && (
+          <button
+            type="button"
+            onClick={onToggleRollVisibility}
+            className={`absolute top-3 right-3 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer ${isRollHidden ? 'text-amber-500 hover:text-amber-400' : ''}`}
+            title={isRollHidden ? "Mostra lancio" : "Nascondi lancio"}
+          >
+            {isRollHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        )}
         
         {/* Background glow when rolling or showing result */}
         {isRolling && (
-          <div className={`absolute inset-0 bg-${colorName}-500/5 blur-xl animate-pulse rounded-xl`} />
+          <div className={`absolute inset-0 ${colors.bg}/5 blur-xl animate-pulse rounded-xl`} />
         )}
 
         {/* Dynamic floating sparkles for critical successes */}
         {sparkles.map((s) => (
           <div
             key={s.id}
-            className={`absolute w-2 h-2 rounded-full bg-${colorName}-400 sparkle-particle pointer-events-none z-20`}
+            className={`absolute w-2 h-2 rounded-full ${colors.textActive} sparkle-particle pointer-events-none z-20`}
             style={{
               left: '50%',
               top: '50%',
@@ -343,15 +346,15 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
 
         {isRolling ? (
           <div className="flex flex-col items-center">
-            <span className={`text-6xl font-display font-extrabold text-${colorName}-500/90 tracking-tighter filter blur-[1px] animate-pulse`}>
+            <span className={`text-6xl font-display font-extrabold ${colors.text}/90 tracking-tighter filter blur-[1px] animate-pulse`}>
               {tempNumber ?? '?'}
             </span>
-            <span className={`text-xs text-${colorName}-500/60 font-mono mt-3 uppercase tracking-widest animate-pulse`}>
+            <span className={`text-xs ${colors.text}/60 font-mono mt-3 uppercase tracking-widest animate-pulse`}>
               Rotolando...
             </span>
           </div>
         ) : lastRoll ? (
-          <div className="flex flex-col items-center text-center">
+          <div className="flex flex-col items-center text-center relative group">
             <span className="text-xs font-mono uppercase tracking-widest text-slate-500 mb-1 flex items-center justify-center gap-1.5 flex-wrap">
               Risultato {lastRoll.diceType} 
               {lastRoll.label && (
@@ -360,7 +363,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                 </span>
               )}
             </span>
-            <span className={`text-6xl font-display font-extrabold text-white tracking-tighter dice-animation drop-shadow-[0_0_15px_rgba(${rgbValues},0.2)]`}>
+            <span className={`text-6xl font-display font-extrabold text-white tracking-tighter dice-animation drop-shadow-[0_0_15px_rgba(${rgbValues},0.2)] ${isRollHidden ? 'opacity-30 blur-[2px]' : ''}`}>
               {lastRoll.result}
             </span>
             {lastRoll.result === parseInt(lastRoll.diceType.substring(1)) && (
@@ -397,10 +400,10 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-display">
             Storico Lanci
           </span>
-          {history.length > 0 && (
+          {rollHistory.length > 0 && onClearHistory && (
             <button
               type="button"
-              onClick={clearHistory}
+              onClick={onClearHistory}
               className="text-[10px] text-slate-500 hover:text-slate-300 flex items-center gap-1 transition-colors cursor-pointer"
               title="Svuota Storico"
             >
@@ -410,11 +413,11 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
           )}
         </div>
 
-        {history.length === 0 ? (
+        {(!rollHistory || rollHistory.length <= 1) ? (
           <p className="text-xs text-slate-600 italic">Nessun lancio registrato in questa sessione.</p>
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-2 pr-1 scrollbar-thin">
-            {history.map((roll, idx) => (
+            {rollHistory.slice(1).map((roll, idx) => (
               <div
                 key={roll.timestamp + idx}
                 className="bg-[#0c0d10] border border-bento-border rounded-lg py-1 px-3 flex flex-col items-center min-w-[65px] relative group"
@@ -424,9 +427,9 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                 </span>
                 <span className={`text-base font-display font-bold ${
                   roll.result === parseInt(roll.diceType.substring(1))
-                    ? `text-${colorName}-400`
+                    ? colors.textActive
                     : roll.result === 1
-                    ? `text-${colorName}-500`
+                    ? colors.text
                     : 'text-slate-200'
                 }`}>
                   {roll.result}
