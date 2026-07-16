@@ -604,13 +604,21 @@ export default function App() {
           {/* Open Shared Screen in New Window */}
           <button
             onClick={() => {
-              window.open(`${window.location.origin}${window.location.pathname}?shared=true`, '_blank');
+              const width = 1280;
+              const height = 800;
+              const left = (window.screen.width / 2) - (width / 2);
+              const top = (window.screen.height / 2) - (height / 2);
+              window.open(
+                `${window.location.origin}${window.location.pathname}?shared=true`, 
+                'SharedViewWindow',
+                `toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,copyhistory=no,width=${width},height=${height},top=${top},left=${left}`
+              );
             }}
             className="px-3.5 py-2 bg-bento-panel hover:bg-bento-button text-slate-300 border border-bento-border rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
             title="Apri lo Schermo Condiviso in una finestra separata per i giocatori (ideale per un secondo monitor o proiettore)"
           >
             <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-            Schermo Giocatori (Nuova Tab)
+            Schermo Giocatori (Pop-up)
           </button>
 
           {/* Shared View Trigger in-page */}
