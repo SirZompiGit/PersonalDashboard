@@ -98,67 +98,55 @@ export const ParticipantView: React.FC<ParticipantViewProps> = ({ roomId, userId
         </div>
       </div>
 
-      {/* Personal Action Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
-        {/* Notes (Only if assigned or always?) Let's show always but disable if not assigned */}
-        <div className="col-span-1 lg:col-span-6 bg-bento-panel border border-bento-border rounded-xl p-5 shadow-lg flex flex-col h-full min-h-[400px]">
-          <div className="border-b border-bento-border pb-3 mb-3 shrink-0 flex items-center justify-between">
-            <h2 className="text-sm font-display font-bold text-slate-200 uppercase flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-emerald-400" /> Appunti Personali
-            </h2>
-          </div>
-          {assignedPlayer ? (
-            <textarea
-              value={user.notes || ''}
-              onChange={handleNotesChange}
-              placeholder="Scrivi qui i tuoi appunti privati... (Verranno salvati automaticamente)"
-              className="flex-1 w-full bg-[#1a1d23] border border-[#2d333d] rounded-lg p-3 text-slate-300 text-sm focus:outline-none focus:border-blue-500/50 resize-none scrollbar-thin"
-            />
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50">
-               <span className="text-xs text-slate-500 uppercase tracking-widest font-mono">Appunti non disponibili</span>
-               <span className="text-[10px] text-slate-600 mt-2">Attendi che il master ti assegni un personaggio</span>
-            </div>
-          )}
-        </div>
-
-        {/* Interactive Dice Roller */}
-        <div className="col-span-1 lg:col-span-6 h-full min-h-[400px]">
-          {assignedPlayer ? (
-            <DiceRoller 
-              selectedDice={selectedDice}
-              onSelectedDiceChange={setSelectedDice}
-              lastRoll={myLastRoll}
-              rollHistory={myRollHistory}
-              diceLabels={roomState.campaign.diceLabels || []}
-              onRoll={(diceType, result, label) => {
-                const finalLabel = label ? `${userId}|${user.name}|${label}` : `${userId}|${user.name}`;
-                pushParticipantRoll(roomId, {
-                  diceType,
-                  result,
-                  timestamp: Date.now(),
-                  label: finalLabel
-                });
-              }}
-              theme={roomState.campaign.theme}
-            />
-          ) : (
-            <div className="bg-bento-panel border border-bento-border rounded-xl p-5 shadow-lg flex flex-col h-full flex-1 items-center justify-center text-center opacity-50">
-               <span className="text-xs text-slate-500 uppercase tracking-widest font-mono">Dadi non disponibili</span>
-               <span className="text-[10px] text-slate-600 mt-2">Attendi che il master ti assegni un personaggio</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="w-full h-px bg-slate-800 my-2" />
-
       {/* Shared View (Master's View) */}
       <div className="flex-1 min-h-[800px] border border-bento-border rounded-2xl overflow-hidden shadow-2xl relative bg-[#0c0d10]">
         <div className="absolute top-0 left-0 bg-blue-500/10 text-blue-400 px-4 py-1 text-[10px] uppercase font-mono font-bold rounded-br-lg z-50 border-r border-b border-blue-500/20 backdrop-blur-sm">
           Vista Condivisa (Master)
         </div>
-        <SharedView state={roomState.campaign} theme={roomState.campaign.theme || 'red'} participantRolls={roomState.participantRolls} />
+        <SharedView 
+          state={roomState.campaign} 
+          theme={roomState.campaign.theme || 'red'} 
+          participantRolls={roomState.participantRolls} 
+          personalNotesSlot={
+            assignedPlayer ? (
+              <textarea
+                value={user.notes || ''}
+                onChange={handleNotesChange}
+                placeholder="Scrivi qui i tuoi appunti privati... (Verranno salvati automaticamente)"
+                className="flex-1 w-full h-full bg-[#1a1d23] border border-[#2d333d] rounded-lg p-3 text-slate-300 text-sm focus:outline-none focus:border-blue-500/50 resize-none scrollbar-thin"
+              />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50">
+                 <span className="text-xs text-slate-500 uppercase tracking-widest font-mono">Appunti non disponibili</span>
+                 <span className="text-[10px] text-slate-600 mt-2">Attendi che il master ti assegni un personaggio</span>
+              </div>
+            )
+          }
+          diceRollerSlot={
+            assignedPlayer ? (
+              <DiceRoller 
+                selectedDice={selectedDice}
+                onSelectedDiceChange={setSelectedDice}
+                lastRoll={myLastRoll}
+                rollHistory={myRollHistory}
+                onRoll={(diceType, result, label) => {
+                  const finalLabel = label ? `${userId}|${user.name}|${label}` : `${userId}|${user.name}`;
+                  pushParticipantRoll(roomId, {
+                    diceType,
+                    result,
+                    timestamp: Date.now(),
+                    label: finalLabel
+                  });
+                }}
+                theme={roomState.campaign.theme}
+              />
+            ) : (
+              <div className="bg-[#1a1d23] border border-bento-border rounded-xl p-5 flex flex-col items-center justify-center text-center opacity-50 h-32">
+                 <span className="text-xs text-slate-500 uppercase tracking-widest font-mono">Dadi non disponibili</span>
+              </div>
+            )
+          }
+        />
       </div>
 
     </div>

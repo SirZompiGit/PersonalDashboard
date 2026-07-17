@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CampaignState, Player, HealthBar } from '../types';
-import { Shield, Sparkles, BookOpen, Heart, Star, GripHorizontal, GripVertical } from 'lucide-react';
+import { Shield, Sparkles, BookOpen, Heart, Star, GripHorizontal, GripVertical, Maximize2, X, Dices } from 'lucide-react';
 import { CampaignTheme, getThemeColors } from '../theme';
 import { HealthBarItem } from './HealthBarItem';
 import { playRollSound, playCritSuccessSound, playCritFailSound } from '../utils/audio';
@@ -11,9 +11,11 @@ interface SharedViewProps {
   state: CampaignState;
   participantRolls?: RollResult[];
   theme?: CampaignTheme;
+  personalNotesSlot?: React.ReactNode;
+  diceRollerSlot?: React.ReactNode;
 }
 
-export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls = [] }) => {
+export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls = [], personalNotesSlot, diceRollerSlot }) => {
   const { title, players, healthBars, lastRoll, theme = 'crimson' } = state;
   const colors = getThemeColors(theme);
   const colorName = theme === 'sapphire' ? 'blue' : theme === 'crimson' ? 'red' : theme;
@@ -29,6 +31,7 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
   const [healthLayout, setHealthLayout] = useState<'horizontal' | 'vertical'>('horizontal');
   const containerRef = useRef<HTMLDivElement>(null);
   const dummyRef = useRef<string | null>(null);
+  const [expandedNote, setExpandedNote] = useState<'campaign' | 'personal' | null>(null);
 
   useEffect(() => {
     if (lastRoll && lastRoll.timestamp !== prevRollTimestampRef.current) {
@@ -268,8 +271,15 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
               <div className="bg-bento-panel border border-bento-border rounded-xl p-3 md:p-4 flex flex-col items-center justify-center text-center relative overflow-hidden flex-1 shadow-lg min-h-0">
                 <div className={`absolute inset-0 bg-radial-gradient ${colors.glow} via-transparent to-transparent opacity-50 pointer-events-none`} />
                 
-                <div className="border-b border-bento-border pb-2 mb-2 w-full">
-                  <span className="text-xs uppercase font-mono tracking-widest text-slate-500">Ultimo Lancio</span>
+                
+                  {diceRollerSlot && (
+                    <div className="mb-4 z-10 relative bg-[#0c0d10]/90 border border-slate-700/50 rounded-xl shadow-inner transform scale-90 origin-top flex flex-col -mt-2">
+                      {diceRollerSlot}
+                    </div>
+                  )}
+                  <div className="border-b border-bento-border pb-2 mb-2 w-full">
+                    <span className="text-xs uppercase font-mono tracking-widest text-slate-500">Ultimo Lancio</span>
+
                 </div>
                 
                 {lastRoll ? (
@@ -439,20 +449,73 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
             </div>
           )}
           
-          {/* Bottom Area: Campaign Notes */}
-          {state.campaignNotes && state.campaignNotes.trim().length > 0 && (
-            <div className="bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg flex flex-col shrink-0 h-40 min-h-[10rem] max-h-[80vh] resize-y overflow-hidden relative">
-              <div className="border-b border-bento-border pb-3 mb-4 shrink-0">
-                <h2 className="text-base font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
-                  <BookOpen className={`w-5 h-5 ${colors.text}`} /> Appunti della Campagna
-                </h2>
-              </div>
-              <div className="flex-1 w-full bg-[#0c0d10] border border-bento-border text-slate-200 text-sm rounded-lg p-4 leading-relaxed font-sans shadow-inner overflow-y-auto whitespace-pre-wrap break-words scrollbar-hide">
-                {state.campaignNotes}
-              </div>
+                    {/* Bottom Area: Notes */}
+          {((state.campaignNotes && state.campaignNotes.trim().length > 0) || personalNotesSlot) && (
+            <div className="flex flex-col md:flex-row gap-4 shrink-0 h-48 min-h-[12rem] max-h-[80vh] relative">
+              
+              {state.campaignNotes && state.campaignNotes.trim().length > 0 && (
+                <div className="bg-bento-panel border border-bento-border rounded-xl p-5 shadow-lg flex flex-col flex-[3] resize-y overflow-hidden relative">
+                  <div className="border-b border-bento-border pb-3 mb-3 shrink-0 flex items-center justify-between">
+                    <h2 className="text-sm font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
+                      <BookOpen className={`w-4 h-4 ${colors.text}`} /> Appunti Campagna
+                    </h2>
+                    <button onClick={() => setExpandedNote('campaign')} className="text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 text-[10px] uppercase font-bold cursor-pointer"><Maximize2 className="w-3 h-3"/> Extend</button>
+                  </div>
+                  <div className="flex-1 w-full bg-[#0c0d10] border border-bento-border text-slate-200 text-sm rounded-lg p-3 leading-relaxed font-sans shadow-inner overflow-y-auto whitespace-pre-wrap break-words scrollbar-hide">
+                    {state.campaignNotes}
+                  </div>
+                </div>
+              )}
+
+              {personalNotesSlot && (
+                <div className="bg-bento-panel border border-bento-border rounded-xl p-5 shadow-lg flex flex-col flex-[2] resize-y overflow-hidden relative">
+                  <div className="border-b border-bento-border pb-3 mb-3 shrink-0 flex items-center justify-between">
+                    <h2 className="text-sm font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
+                      <BookOpen className={`w-4 h-4 text-emerald-400`} /> Appunti Personali
+                    </h2>
+                    <button onClick={() => setExpandedNote('personal')} className="text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 text-[10px] uppercase font-bold cursor-pointer"><Maximize2 className="w-3 h-3"/> Extend</button>
+                  </div>
+                  <div className="flex-1 overflow-hidden flex flex-col">
+                    {personalNotesSlot}
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </div>
+
+          {/* Modals for Expanded Notes */}
+          {expandedNote === 'campaign' && (
+             <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-12 animate-fadeIn">
+               <div className="bg-bento-panel border border-bento-border rounded-2xl w-full max-w-5xl h-full max-h-full flex flex-col shadow-2xl relative overflow-hidden">
+                 <div className="bg-slate-900 border-b border-bento-border p-4 flex items-center justify-between shrink-0">
+                    <h2 className="text-lg font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
+                      <BookOpen className={`w-5 h-5 ${colors.text}`} /> Appunti Campagna
+                    </h2>
+                    <button onClick={() => setExpandedNote(null)} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg cursor-pointer"><X className="w-5 h-5"/></button>
+                 </div>
+                 <div className="flex-1 bg-[#0c0d10] p-6 text-slate-200 text-base leading-relaxed font-sans overflow-y-auto whitespace-pre-wrap break-words">
+                    {state.campaignNotes}
+                 </div>
+               </div>
+             </div>
+          )}
+
+          {expandedNote === 'personal' && personalNotesSlot && (
+             <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 md:p-12 animate-fadeIn">
+               <div className="bg-bento-panel border border-bento-border rounded-2xl w-full max-w-5xl h-full max-h-full flex flex-col shadow-2xl relative overflow-hidden">
+                 <div className="bg-slate-900 border-b border-bento-border p-4 flex items-center justify-between shrink-0">
+                    <h2 className="text-lg font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
+                      <BookOpen className={`w-5 h-5 text-emerald-400`} /> Appunti Personali
+                    </h2>
+                    <button onClick={() => setExpandedNote(null)} className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg cursor-pointer"><X className="w-5 h-5"/></button>
+                 </div>
+                 <div className="flex-1 bg-[#0c0d10] p-6 overflow-hidden flex flex-col">
+                    {personalNotesSlot}
+                 </div>
+               </div>
+             </div>
+          )}
+</div>
       </div>
     </div>
   );
