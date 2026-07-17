@@ -279,8 +279,9 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                 ) : (
                   <>
                     <span className="text-slate-300 font-medium">{lbl}</span>
+                    {(onRenameDiceLabel || onDeleteDiceLabel) && (
                     <div className="flex items-center gap-1.5">
-                      <button
+                      {onRenameDiceLabel && <button
                         type="button"
                         onClick={() => {
                           setEditingLabelName(lbl);
@@ -290,8 +291,8 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                         className="text-slate-500 hover:text-slate-300 p-0.5 rounded transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-3 h-3" />
-                      </button>
-                      <button
+                      </button>}
+                      {onDeleteDiceLabel && <button
                         type="button"
                         onClick={() => {
                           setDeletingLabelName(lbl);
@@ -300,8 +301,9 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                         className={`text-slate-500 hover:${colors.text} p-0.5 rounded transition-colors cursor-pointer`}
                       >
                         <Trash2 className="w-3 h-3" />
-                      </button>
+                      </button>}
                     </div>
+                    )}
                   </>
                 )}
               </div>

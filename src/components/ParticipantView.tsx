@@ -3,6 +3,7 @@ import { RoomState } from '../firebaseUtils';
 import { BookOpen, User, Dices, Save } from 'lucide-react';
 import { updateUser, pushParticipantRoll } from '../firebaseUtils';
 import { SharedView } from './SharedView';
+import { DiceRoller } from './DiceRoller';
 
 interface ParticipantViewProps {
   roomId: string;
@@ -13,7 +14,7 @@ interface ParticipantViewProps {
 export const ParticipantView: React.FC<ParticipantViewProps> = ({ roomId, userId, roomState }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
-  const [selectedLabel, setSelectedLabel] = useState<string>('');
+  const [selectedDice, setSelectedDice] = useState<string>('d20');
 
   const user = roomState.users[userId];
   if (!user) {
@@ -38,16 +39,15 @@ export const ParticipantView: React.FC<ParticipantViewProps> = ({ roomId, userId
     updateUser(roomId, userId, { notes: e.target.value }).catch(console.error);
   };
 
-  const rollDice = (type: string) => {
-    const max = parseInt(type.substring(1));
-    const result = Math.floor(Math.random() * max) + 1;
-    pushParticipantRoll(roomId, {
-      diceType: type,
-      result,
-      timestamp: Date.now(),
-      label: userId + (selectedLabel ? `|${selectedLabel}` : '')
-    });
-  };
+  const myRollHistory = (roomState.participantRolls || [])
+    .filter(r => r.label && r.label.startsWith(user.name))
+    .map(r => ({
+      ...r,
+      label: r.label?.includes('|') ? r.label.split('|')[1] : undefined
+    }))
+    .reverse();
+    
+  const myLastRoll = myRollHistory.length > 0 ? myRollHistory[0] : null;
 
   return (
     <div className="min-h-screen bg-[#0c0d10] text-slate-400 p-4 md:p-8 flex flex-col gap-6 font-sans">
@@ -98,7 +98,7 @@ export const ParticipantView: React.FC<ParticipantViewProps> = ({ roomId, userId
       {/* Personal Action Area */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 shrink-0">
         {/* Notes (Only if assigned or always?) Let's show always but disable if not assigned */}
-        <div className="col-span-1 lg:col-span-6 bg-bento-panel border border-bento-border rounded-xl p-5 shadow-lg flex flex-col h-64">
+        <div className="col-span-1 lg:col-span-6 bg-bento-panel border border-bento-border rounded-xl p-5 shadow-lg flex flex-col h-full min-h-[400px]">
           <div className="border-b border-bento-border pb-3 mb-3 shrink-0 flex items-center justify-between">
             <h2 className="text-sm font-display font-bold text-slate-200 uppercase flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-emerald-400" /> Appunti Personali
@@ -120,40 +120,27 @@ export const ParticipantView: React.FC<ParticipantViewProps> = ({ roomId, userId
         </div>
 
         {/* Interactive Dice Roller */}
-        <div className="col-span-1 lg:col-span-6 bg-bento-panel border border-bento-border rounded-xl p-5 shadow-lg flex flex-col h-64">
-          <div className="flex items-center justify-between mb-4 border-b border-bento-border pb-3 shrink-0">
-            <h2 className="text-sm font-display font-bold text-slate-200 uppercase flex items-center gap-2">
-              <Dices className="w-4 h-4 text-emerald-400" /> Lancia i Dadi
-            </h2>
-          </div>
+        <div className="col-span-1 lg:col-span-6 h-full min-h-[400px]">
           {assignedPlayer ? (
-            <div className="flex flex-col flex-1">
-              <div className="mb-4 shrink-0">
-                <select 
-                  value={selectedLabel} 
-                  onChange={e => setSelectedLabel(e.target.value)}
-                  className="w-full bg-[#1a1d23] border border-[#2d333d] rounded-lg p-2 text-slate-300 text-sm focus:outline-none focus:border-blue-500/50"
-                >
-                  <option value="">Nessuna Etichetta</option>
-                  {(roomState.campaign.diceLabels || []).map((l, i) => (
-                    <option key={i} value={l}>{l}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex flex-wrap gap-2 overflow-y-auto scrollbar-thin content-start">
-                {['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'].map(d => (
-                  <button
-                    key={d}
-                    onClick={() => rollDice(d)}
-                    className="flex-1 min-w-[60px] py-3 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-mono font-bold rounded-lg border border-slate-700 transition-colors shadow-sm"
-                  >
-                    {d}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <DiceRoller 
+              selectedDice={selectedDice}
+              onSelectedDiceChange={setSelectedDice}
+              lastRoll={myLastRoll}
+              rollHistory={myRollHistory}
+              onRoll={(diceType, result, label) => {
+                const finalLabel = label ? `${user.name}|${label}` : user.name;
+                pushParticipantRoll(roomId, {
+                  diceType,
+                  result,
+                  timestamp: Date.now(),
+                  label: finalLabel
+                });
+              }}
+              theme={roomState.campaign.theme}
+              diceLabels={roomState.campaign.diceLabels}
+            />
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50">
+            <div className="bg-bento-panel border border-bento-border rounded-xl p-5 shadow-lg flex flex-col h-full flex-1 items-center justify-center text-center opacity-50">
                <span className="text-xs text-slate-500 uppercase tracking-widest font-mono">Dadi non disponibili</span>
                <span className="text-[10px] text-slate-600 mt-2">Attendi che il master ti assegni un personaggio</span>
             </div>
@@ -168,7 +155,7 @@ export const ParticipantView: React.FC<ParticipantViewProps> = ({ roomId, userId
         <div className="absolute top-0 left-0 bg-blue-500/10 text-blue-400 px-4 py-1 text-[10px] uppercase font-mono font-bold rounded-br-lg z-50 border-r border-b border-blue-500/20 backdrop-blur-sm">
           Vista Condivisa (Master)
         </div>
-        <SharedView state={roomState.campaign} theme={roomState.campaign.theme || 'red'} />
+        <SharedView state={roomState.campaign} theme={roomState.campaign.theme || 'red'} participantRolls={roomState.participantRolls} />
       </div>
 
     </div>

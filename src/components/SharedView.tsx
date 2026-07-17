@@ -5,11 +5,15 @@ import { CampaignTheme, getThemeColors } from '../theme';
 import { HealthBarItem } from './HealthBarItem';
 import { playRollSound, playCritSuccessSound, playCritFailSound } from '../utils/audio';
 
+import { RollResult } from '../types';
+
 interface SharedViewProps {
   state: CampaignState;
+  participantRolls?: RollResult[];
+  theme?: CampaignTheme;
 }
 
-export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
+export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls = [] }) => {
   const { title, players, healthBars, lastRoll, theme = 'crimson' } = state;
   const colors = getThemeColors(theme);
   const colorName = theme === 'sapphire' ? 'blue' : theme === 'crimson' ? 'red' : theme;
@@ -386,6 +390,50 @@ export const SharedView: React.FC<SharedViewProps> = ({ state }) => {
             </div>
           </div>
 
+          {/* Participant Rolls Area */}
+          {participantRolls && participantRolls.length > 0 && (
+            <div className="bg-bento-panel border border-bento-border rounded-xl p-4 shadow-lg flex flex-col shrink-0">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-display block mb-3">
+                Lanci dei Giocatori
+              </span>
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                {participantRolls.slice().reverse().map((roll, idx) => {
+                  let playerLabel = roll.label || 'Sconosciuto';
+                  let rollLabel = '';
+                  if (playerLabel.includes('|')) {
+                     const parts = playerLabel.split('|');
+                     playerLabel = parts[0];
+                     rollLabel = parts[1];
+                  }
+                  // We could map playerLabel to name if we had users, but participantRolls should maybe have the name? 
+                  // Wait, participant roll.label currently has userId. Let's show just the first part or something.
+                  
+                  return (
+                    <div key={roll.timestamp + idx} className="bg-[#0c0d10] border border-bento-border rounded-lg p-2 flex flex-col min-w-[80px] shrink-0 relative overflow-hidden group">
+                      <div className={`absolute inset-0 bg-radial-gradient ${colors.glow} opacity-0 group-hover:opacity-20 transition-opacity`} />
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[9px] text-slate-400 font-mono truncate max-w-[50px]" title={playerLabel}>{playerLabel}</span>
+                        <span className="text-[9px] text-slate-600 font-bold">{roll.diceType}</span>
+                      </div>
+                      <div className="flex items-center justify-center py-1">
+                        <span className={`text-xl font-display font-black ${
+                          roll.result === parseInt(roll.diceType.substring(1)) ? colors.textActive : roll.result === 1 ? colors.text : 'text-white'
+                        }`}>
+                          {roll.result}
+                        </span>
+                      </div>
+                      {rollLabel && (
+                        <span className="text-[8px] uppercase tracking-wider text-slate-500 text-center truncate w-full block mt-1" title={rollLabel}>
+                          {rollLabel}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
           {/* Bottom Area: Campaign Notes */}
           {state.campaignNotes && state.campaignNotes.trim().length > 0 && (
             <div className="bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg flex flex-col shrink-0 h-40 min-h-[10rem] max-h-[80vh] resize-y overflow-hidden relative">
