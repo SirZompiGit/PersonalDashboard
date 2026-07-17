@@ -5,6 +5,13 @@ import { DiceRoller } from './components/DiceRoller';
 import { HealthBarsManager } from './components/HealthBarsManager';
 import { PlayerCards } from './components/PlayerCards';
 import { SharedView } from './components/SharedView';
+
+import { db } from './firebase';
+import { createRoom, updateRoomCampaign, joinRoom, subscribeToRoom, RoomState, RoomUser, updateUser } from './firebaseUtils';
+import { WelcomeScreen } from './components/WelcomeScreen';
+import { ParticipantView } from './components/ParticipantView';
+
+
 import { 
   Download, 
   Upload, 
@@ -145,6 +152,12 @@ export default function App() {
     return DEFAULT_STATE;
   });
 
+  type AppMode = 'welcome' | 'lite' | 'master_x' | 'participant_x';
+  const [appMode, setAppMode] = useState<AppMode>('welcome');
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [roomState, setRoomState] = useState<RoomState | null>(null);
+
   const [isSharedMode, setIsSharedMode] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isExternalUpdateRef = useRef(false);
@@ -158,6 +171,12 @@ export default function App() {
       const params = new URLSearchParams(window.location.search);
       if (params.get('shared') === 'true') {
         setIsUrlShared(true);
+        if (params.get('room')) {
+           setAppMode('participant_x'); // Read-only shared view for X
+           setRoomId(params.get('room'));
+        } else {
+           setAppMode('lite');
+        }
       }
     }
   }, []);
@@ -526,9 +545,57 @@ export default function App() {
     }
   };
 
+  // Effect to sync master state changes back to firebase
+  useEffect(() => {
+    if (appMode === 'master_x' && roomId) {
+       updateRoomCampaign(roomId, state).catch(console.error);
+    }
+  }, [state, appMode, roomId]);
+
   // Entirely render the Shared view if we are on the dedicated player URL
   if (isUrlShared) {
+    if (appMode === 'participant_x') {
+      return <ParticipantView roomId={roomId!} userId={userId || 'guest'} />;
+    }
     return <SharedView state={state} />;
+  }
+
+  if (appMode === 'welcome') {
+    return (
+      <WelcomeScreen 
+        onSelectLite={() => setAppMode('lite')}
+        onSelectMaster={async () => {
+          try {
+            const newPin = await createRoom(state);
+            setRoomId(newPin);
+            setAppMode('master_x');
+            // start listening to room users/rolls
+            subscribeToRoom(newPin, (newRoomState) => {
+               if (newRoomState) setRoomState(newRoomState);
+            });
+          } catch (e) {
+            console.error('Error creating room', e);
+            alert('Errore Firebase: Assicurati di aver configurato il file firebase.ts con le API Keys giuste.');
+          }
+        }}
+        onSelectParticipant={async (pin) => {
+          try {
+            const newUserId = 'user_' + Math.random().toString(36).substr(2, 9);
+            const userName = 'Utente ' + Math.floor(100 + Math.random() * 900);
+            await joinRoom(pin, newUserId, userName);
+            setUserId(newUserId);
+            setRoomId(pin);
+            setAppMode('participant_x');
+          } catch (e) {
+            alert('Errore Firebase o stanza non trovata. Controlla il PIN e firebase.ts');
+          }
+        }}
+      />
+    );
+  }
+
+  if (appMode === 'participant_x') {
+    return <ParticipantView roomId={roomId!} userId={userId!} />;
   }
 
   // Entirely render the Shared view if screen-share mode is toggled on
@@ -609,7 +676,7 @@ export default function App() {
               const left = (window.screen.width / 2) - (width / 2);
               const top = (window.screen.height / 2) - (height / 2);
               window.open(
-                `${window.location.origin}${window.location.pathname}?shared=true`, 
+                `${window.location.origin}${window.location.pathname}?shared=true${roomId ? `&room=${roomId}` : ''}`, 
                 'SharedViewWindow',
                 `toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,copyhistory=no,width=${width},height=${height},top=${top},left=${left}`
               );
@@ -773,6 +840,76 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {appMode === 'master_x' && roomState && (
+        <div className="max-w-7xl mx-auto w-full mb-8 relative z-10 flex flex-col gap-4">
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-lg">
+            <div className="flex flex-col items-start gap-2">
+              <div className="bg-slate-900 border border-blue-500/40 rounded-xl p-4 text-center min-w-[140px] shadow-inner">
+                <span className="text-[10px] uppercase font-mono tracking-widest text-blue-400 font-bold block mb-1">PIN STANZA</span>
+                <span className="text-4xl font-display font-black tracking-widest text-white">{roomId}</span>
+              </div>
+              <p className="text-slate-300 text-sm max-w-sm mt-2">
+                Comunica questo PIN ai giocatori per farli accedere alla stanza.
+              </p>
+            </div>
+            
+            <div className="flex-1 bg-[#0c0d10] border border-bento-border rounded-xl p-4 min-h-[100px] flex flex-col gap-2 overflow-y-auto max-h-[160px] w-full">
+              <span className="text-[10px] uppercase font-mono tracking-widest text-slate-500">Giocatori Connessi</span>
+              {Object.keys(roomState.users || {}).length === 0 ? (
+                <span className="text-xs text-slate-600 italic">In attesa di connessioni...</span>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {(Object.values(roomState.users || {}) as RoomUser[]).map(user => (
+                    <div key={user.id} className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-2 text-xs flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-200">{user.name}</span>
+                        <span className="text-[9px] font-mono text-slate-500">{user.id.slice(0,5)}</span>
+                      </div>
+                      <select
+                        value={user.assignedPlayerId || ''}
+                        onChange={(e) => {
+                          updateUser(roomId as string, user.id, { assignedPlayerId: e.target.value || null }).catch(console.error);
+                        }}
+                        className="bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-[10px] text-slate-300 w-full cursor-pointer"
+                      >
+                        <option value="">- Spettatore -</option>
+                        {state.players.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+          </div>
+          
+          {/* Master View of Participant Rolls */}
+          {roomState.participantRolls && roomState.participantRolls.length > 0 && (
+             <div className="bg-bento-panel border border-bento-border rounded-xl p-4 flex gap-4 overflow-x-auto scrollbar-thin">
+                {roomState.participantRolls.map((roll, i) => {
+                   const labelParts = roll.label ? roll.label.split('|') : [];
+                   const rollerId = labelParts[0];
+                   const rollLabel = labelParts[1] || '';
+                   const roller = (Object.values(roomState.users || {}) as RoomUser[]).find(u => u.id === rollerId) || { name: 'Sconosciuto', assignedPlayerId: null };
+                   const assignedPlayer = state.players.find(p => p.id === roller.assignedPlayerId);
+                   const displayName = assignedPlayer ? assignedPlayer.name : roller.name;
+                   
+                   return (
+                     <div key={i} className="bg-[#0c0d10] border border-slate-700/50 rounded-lg p-3 min-w-[140px] shrink-0 flex flex-col items-center relative">
+                        <span className="text-[9px] uppercase font-mono tracking-widest text-blue-400 mb-1 truncate w-full text-center">{displayName}</span>
+                        <span className="text-xl font-display font-black text-white">{roll.result}</span>
+                        <span className="text-[10px] font-mono text-slate-500 mt-1">{roll.diceType}</span>
+                        {rollLabel && <span className="absolute -top-2 bg-emerald-500 text-slate-900 text-[8px] font-bold px-1.5 py-0.5 rounded shadow">{rollLabel}</span>}
+                     </div>
+                   );
+                })}
+             </div>
+          )}
+        </div>
+      )}
 
       {/* Main Content Sections */}
       <main className="max-w-7xl mx-auto w-full flex-grow space-y-6 relative z-10">
