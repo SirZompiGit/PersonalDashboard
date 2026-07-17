@@ -574,9 +574,9 @@ export default function App() {
   // Entirely render the Shared view if we are on the dedicated player URL
   if (isUrlShared) {
     if (appMode === 'participant_x') {
-      return <ParticipantView roomId={roomId!} userId={userId || 'guest'} />;
+      return <ParticipantView roomId={roomId!} userId={userId || 'guest'} roomState={roomState!} />;
     }
-    return <SharedView state={state} />;
+    return <SharedView state={state} isLite={appMode === 'lite'} roomUsers={roomState?.users} participantRolls={roomState?.participantRolls} />;
   }
 
   if (appMode === 'welcome') {
@@ -645,7 +645,7 @@ export default function App() {
             Chiudi Schermo Condiviso
           </button>
         </div>
-        <SharedView state={state} />
+        <SharedView state={state} isLite={appMode === 'lite'} roomUsers={roomState?.users} participantRolls={roomState?.participantRolls} />
       </div>
     );
   }

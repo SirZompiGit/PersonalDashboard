@@ -140,7 +140,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
               type="button"
               onClick={() => onSelectedDiceChange(dice)}
               disabled={isRolling}
-              className={`py-2 px-3 sm:px-4 text-center font-mono font-bold text-sm rounded-lg border transition-all cursor-pointer flex-1 min-w-[3rem] ${
+              className={`py-2 px-2 sm:px-3 text-center font-mono font-bold text-[13px] sm:text-sm rounded-lg border transition-all cursor-pointer flex-[1_0_calc(25%-6px)] sm:flex-[1_0_auto] min-w-[44px] ${
                 isSelected
                   ? `${colors.bg} text-white ${colors.border} shadow-md ${colors.shadow}`
                   : 'bg-[#0c0d10] text-slate-400 border-bento-border hover:text-slate-200 hover:border-slate-500'

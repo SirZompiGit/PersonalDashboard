@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CampaignState, Player, HealthBar } from '../types';
+import { RoomUser } from '../firebaseUtils';
 import { Shield, Sparkles, BookOpen, Heart, Star, GripHorizontal, GripVertical, Maximize2, X, Dices } from 'lucide-react';
 import { CampaignTheme, getThemeColors } from '../theme';
 import { HealthBarItem } from './HealthBarItem';
@@ -10,12 +11,14 @@ import { RollResult } from '../types';
 interface SharedViewProps {
   state: CampaignState;
   participantRolls?: RollResult[];
+  roomUsers?: Record<string, RoomUser>;
   theme?: CampaignTheme;
   personalNotesSlot?: React.ReactNode;
   diceRollerSlot?: React.ReactNode;
+  isLite?: boolean;
 }
 
-export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls = [], personalNotesSlot, diceRollerSlot }) => {
+export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls = [], roomUsers, personalNotesSlot, diceRollerSlot, isLite }) => {
   const { title, players, healthBars, lastRoll, theme = 'crimson' } = state;
   const colors = getThemeColors(theme);
   const colorName = theme === 'sapphire' ? 'blue' : theme === 'crimson' ? 'red' : theme;
@@ -372,57 +375,67 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
               </div>
 
               {/* Participant Rolls Sub-Column */}
-              <div className="bg-bento-panel border border-bento-border rounded-xl p-3 shadow-lg flex flex-col flex-[2] overflow-y-auto scrollbar-thin h-full min-w-[140px]">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-display block mb-3 sticky top-0 bg-bento-panel z-10 pb-1 border-b border-bento-border/50">
-                  Lanci dei Giocatori
-                </span>
-                <div className="flex flex-col gap-3">
-                  {(!participantRolls || participantRolls.length === 0) ? (
-                    <div className="text-slate-600 flex flex-col items-center gap-2 mt-4">
-                      <span className="font-mono text-xs">Nessun lancio</span>
-                    </div>
-                  ) : (
-                    participantRolls.slice().reverse().map((roll, idx) => {
-                      let playerLabel = roll.label || 'Sconosciuto';
-                      let rollLabel = '';
-                      if (playerLabel.includes('|')) {
-                         const parts = playerLabel.split('|');
-                         if (parts.length >= 2) {
-                            playerLabel = parts[1] || parts[0];
-                            rollLabel = parts.slice(2).join('|');
-                         } else {
-                            playerLabel = parts[0];
-                         }
-                      }
-                      
-                      return (
-                        <div key={roll.timestamp + idx} className="bg-[#0c0d10] border border-bento-border rounded-lg p-2 flex flex-col w-full relative overflow-hidden group shadow-md hover:border-slate-700 transition-colors">
-                          <div className={`absolute inset-0 bg-radial-gradient ${colors.glow} opacity-0 group-hover:opacity-10 transition-opacity`} />
-                          <div className="flex justify-between items-center mb-1 border-b border-bento-border pb-1 gap-1">
-                            <span className="text-[10px] text-slate-300 font-mono truncate font-bold" title={playerLabel}>{playerLabel}</span>
-                            <span className="text-[9px] text-slate-500 font-bold bg-slate-900 px-1 py-0.5 rounded">{roll.diceType}</span>
-                          </div>
-                          <div className="flex items-center justify-center py-1 relative">
-                            <span className={`text-2xl font-display font-black drop-shadow-sm ${
-                              roll.result === parseInt(roll.diceType.substring(1)) ? colors.textActive : roll.result === 1 ? colors.text : 'text-white'
-                            }`}>
-                              {roll.result}
-                            </span>
-                            {roll.result === parseInt(roll.diceType.substring(1)) && (
-                              <Sparkles className={`w-3 h-3 absolute top-0 right-2 opacity-50 ${colors.textActive}`} />
+              {!isLite && (
+                <div className="bg-bento-panel border border-bento-border rounded-xl p-3 shadow-lg flex flex-col flex-[2] overflow-y-auto scrollbar-thin h-full min-w-[140px]">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-display block mb-3 sticky top-0 bg-bento-panel z-10 pb-1 border-b border-bento-border/50">
+                    Lanci dei Giocatori
+                  </span>
+                  <div className="flex flex-col gap-3">
+                    {(!participantRolls || participantRolls.length === 0) ? (
+                      <div className="text-slate-600 flex flex-col items-center gap-2 mt-4">
+                        <span className="font-mono text-xs">Nessun lancio</span>
+                      </div>
+                    ) : (
+                      participantRolls.slice().reverse().map((roll, idx) => {
+                        let playerLabel = 'Sconosciuto';
+                        let rollLabel = '';
+                        const labelParts = roll.label ? roll.label.split('|') : [];
+                        
+                        if (labelParts.length >= 2) {
+                           const rollerId = labelParts[0];
+                           const rollUserName = labelParts[1];
+                           rollLabel = labelParts.slice(2).join('|');
+                           const roller = roomUsers ? Object.values(roomUsers).find(u => u.id === rollerId) : undefined;
+                           
+                           if (roller) {
+                              const assignedPlayer = state.players.find(p => p.id === roller.assignedPlayerId);
+                              playerLabel = assignedPlayer ? assignedPlayer.name : roller.name;
+                           } else {
+                              playerLabel = rollUserName;
+                           }
+                        } else if (labelParts.length === 1) {
+                           rollLabel = labelParts[0];
+                        }
+                        
+                        return (
+                          <div key={roll.timestamp + idx} className="bg-[#0c0d10] border border-bento-border rounded-lg p-2 flex flex-col w-full relative overflow-hidden group shadow-md hover:border-slate-700 transition-colors">
+                            <div className={`absolute inset-0 bg-radial-gradient ${colors.glow} opacity-0 group-hover:opacity-10 transition-opacity`} />
+                            <div className="flex justify-between items-center mb-1 border-b border-bento-border pb-1 gap-1">
+                              <span className="text-[10px] text-slate-300 font-mono truncate font-bold" title={playerLabel}>{playerLabel}</span>
+                              <span className="text-[9px] text-slate-500 font-bold bg-slate-900 px-1 py-0.5 rounded">{roll.diceType}</span>
+                            </div>
+                            <div className="flex items-center justify-center py-1 relative">
+                              <span className={`text-2xl font-display font-black drop-shadow-sm ${
+                                roll.result === parseInt(roll.diceType.substring(1)) ? colors.textActive : roll.result === 1 ? colors.text : 'text-white'
+                              }`}>
+                                {roll.result}
+                              </span>
+                              {roll.result === parseInt(roll.diceType.substring(1)) && (
+                                <Sparkles className={`w-3 h-3 absolute top-0 right-2 opacity-50 ${colors.textActive}`} />
+                              )}
+                            </div>
+                            {rollLabel && (
+                              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 text-center truncate w-full block mt-1 bg-slate-800/50 rounded py-0.5 px-1" title={rollLabel}>
+                                {rollLabel}
+                              </span>
                             )}
                           </div>
-                          {rollLabel && (
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 text-center truncate w-full block mt-1 bg-slate-800/50 rounded py-0.5 px-1" title={rollLabel}>
-                              {rollLabel}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
           {/* Bottom Area: Notes */}

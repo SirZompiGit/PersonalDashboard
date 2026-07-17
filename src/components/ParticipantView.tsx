@@ -107,6 +107,7 @@ export const ParticipantView: React.FC<ParticipantViewProps> = ({ roomId, userId
           state={roomState.campaign} 
           theme={roomState.campaign.theme || 'red'} 
           participantRolls={roomState.participantRolls} 
+          roomUsers={roomState.users}
           personalNotesSlot={
             assignedPlayer ? (
               <textarea
