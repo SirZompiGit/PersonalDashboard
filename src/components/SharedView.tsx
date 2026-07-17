@@ -102,7 +102,7 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
     theme === 'amber' ? '245,158,11' : '239,68,68';
 
   return (
-    <div className="w-full h-full min-h-full bg-[#0c0d10] text-slate-100 overflow-auto relative font-sans flex flex-col items-center justify-center p-4 md:p-8">
+    <div className="w-full h-full min-h-full bg-[#0c0d10] text-slate-100 overflow-auto relative font-sans flex flex-col p-4 md:p-8">
       <style>{`
         @keyframes diceParticleFloatShared {
           0% { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy))) scale(0.5); opacity: 0; }
@@ -124,7 +124,7 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
       {/* Scaled Virtual Container */}
       <div 
         ref={containerRef}
-        className="w-full max-w-[98%] xl:max-w-[1800px] min-w-[1200px] flex-1 bg-bento-panel border border-bento-border/50 rounded-2xl shadow-2xl flex flex-col p-6 xl:p-8 relative z-10 mx-auto my-2 min-h-0 overflow-hidden"
+        className="w-full max-w-[95%] xl:max-w-[1600px] min-w-[1024px] min-h-[500px] h-fit bg-bento-panel border border-bento-border/50 rounded-2xl shadow-2xl flex flex-col p-8 relative z-10 m-auto shrink-0"
       >
         {/* Cinematic Header */}
         <div className="text-center mb-6 shrink-0">
@@ -213,7 +213,7 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
             </div>
 
             {/* Middle Column: Health Bars (5 cols) */}
-            <div className="col-span-5 bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg h-full flex flex-col overflow-hidden">
+            <div className="col-span-5 bg-bento-panel border border-bento-border rounded-xl p-5 md:p-6 shadow-lg h-full flex flex-col overflow-hidden min-h-0">
               <div className="border-b border-bento-border pb-3 mb-4 shrink-0 flex items-center justify-between">
                 <h2 className="text-base font-display font-extrabold text-slate-200 tracking-wider uppercase flex items-center gap-2">
                   <Heart className={`w-5 h-5 ${colors.text}`} /> Stato della Salute
@@ -349,8 +349,36 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
                       <p className="text-xs italic leading-snug px-4">In attesa del primo lancio...</p>
                     </div>
                   )}
-                  {/* Roll History Mini-View DELETED FROM HERE AS REQUESTED */}
                 </div>
+                {/* Roll History Mini-View */}
+                {state.rollHistory && state.rollHistory.length > 1 && !state.isRollHidden && (
+                  <div className="bg-bento-panel border border-bento-border rounded-xl p-3 shadow-lg shrink-0 overflow-hidden">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 font-display block mb-2 border-b border-bento-border/50 pb-1">
+                      Storico Lanci
+                    </span>
+                    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                      {state.rollHistory.slice(1, 6).map((roll, idx) => (
+                        <div
+                          key={roll.timestamp + idx}
+                          className="bg-[#0c0d10] border border-bento-border rounded-lg py-1 px-3 flex flex-col items-center min-w-[50px] relative group shrink-0"
+                        >
+                          <span className="text-[9px] text-slate-500 font-mono font-bold">
+                            {roll.diceType}
+                          </span>
+                          <span className={`text-sm font-display font-bold ${
+                            roll.result === parseInt(roll.diceType.substring(1))
+                              ? colors.textActive
+                              : roll.result === 1
+                                ? colors.text
+                                : 'text-slate-200'
+                          }`}>
+                            {roll.result}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Schedule Box */}
                 {(state.scheduleDay || state.scheduleTime) && (

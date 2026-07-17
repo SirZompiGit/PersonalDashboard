@@ -38,6 +38,32 @@ export const HealthBarItem: React.FC<HealthBarItemProps> = ({
   const [flashState, setFlashState] = useState<'damage' | 'heal' | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const prevValueRef = useRef(bar.currentValue);
+  const barContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMouseDown || activeBarIdRef.current !== bar.id || readOnly) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!barContainerRef.current) return;
+      const rect = barContainerRef.current.getBoundingClientRect();
+      let newPercentage = 0;
+      if (layout === 'vertical') {
+        const y = e.clientY - rect.top;
+        newPercentage = 1 - (y / rect.height);
+      } else {
+        const x = e.clientX - rect.left;
+        newPercentage = x / rect.width;
+      }
+      newPercentage = Math.max(0, Math.min(1, newPercentage));
+      const newValue = Math.round(newPercentage * bar.maxValue);
+      if (newValue !== bar.currentValue) {
+        handleSegmentInteraction(bar, newValue);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, [isMouseDown, bar, layout, readOnly, handleSegmentInteraction, activeBarIdRef]);
 
   useEffect(() => {
     if (bar.currentValue !== prevValueRef.current) {
@@ -120,6 +146,7 @@ export const HealthBarItem: React.FC<HealthBarItemProps> = ({
             {/* The Bar */}
             <div className="relative flex-grow flex justify-center w-full mb-1">
               <div 
+                ref={barContainerRef}
                 className={`flex flex-col-reverse w-full h-full rounded bg-[#1a1d23] overflow-hidden border border-[#2d333d] ${bar.maxValue > 60 ? 'gap-0' : bar.maxValue > 30 ? 'gap-[1px]' : 'gap-[1px]'} p-[2px] select-none ${readOnly ? '' : 'cursor-pointer'} transition-shadow relative z-10 ${
                   flashState === 'damage' ? 'ring-2 ring-[#ff0055]/30 shadow-[inset_0_0_10px_rgba(255,0,85,0.2)]' : 
                   flashState === 'heal' ? 'ring-2 ring-[#00ff88]/30 shadow-[inset_0_0_10px_rgba(0,255,136,0.2)]' : ''
@@ -278,6 +305,7 @@ export const HealthBarItem: React.FC<HealthBarItemProps> = ({
 
         <div className="relative">
           <div 
+            ref={barContainerRef}
             className={`flex h-8 w-full rounded-lg bg-[#1a1d23] overflow-hidden border border-[#2d333d] ${bar.maxValue > 60 ? 'gap-0' : bar.maxValue > 30 ? 'gap-[1px]' : 'gap-[2px]'} p-[3px] select-none ${readOnly ? '' : 'cursor-pointer'} transition-shadow relative z-10 ${
               flashState === 'damage' ? 'ring-2 ring-[#ff0055]/30 shadow-[inset_0_0_10px_rgba(255,0,85,0.2)]' : 
               flashState === 'heal' ? 'ring-2 ring-[#00ff88]/30 shadow-[inset_0_0_10px_rgba(0,255,136,0.2)]' : ''
