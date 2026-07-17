@@ -99,7 +99,7 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
     theme === 'amber' ? '245,158,11' : '239,68,68';
 
   return (
-    <div className="w-full h-full min-h-full bg-[#0c0d10] text-slate-100 overflow-auto relative font-sans flex flex-col p-4 md:p-8">
+    <div className="w-full h-full min-h-full bg-[#0c0d10] text-slate-100 overflow-auto relative font-sans flex flex-col items-center justify-center p-4 md:p-8">
       <style>{`
         @keyframes diceParticleFloatShared {
           0% { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy))) scale(0.5); opacity: 0; }
@@ -121,7 +121,7 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
       {/* Scaled Virtual Container */}
       <div 
         ref={containerRef}
-        className="w-full max-w-[95%] xl:max-w-[1600px] min-w-[1024px] min-h-[500px] h-fit bg-bento-panel border border-bento-border/50 rounded-2xl shadow-2xl flex flex-col p-8 relative z-10 m-auto shrink-0"
+        className="w-full max-w-[98%] xl:max-w-[1800px] min-w-[1200px] flex-1 bg-bento-panel border border-bento-border/50 rounded-2xl shadow-2xl flex flex-col p-6 xl:p-8 relative z-10 mx-auto my-2 min-h-0 overflow-hidden"
       >
         {/* Cinematic Header */}
         <div className="text-center mb-6 shrink-0">
@@ -280,7 +280,7 @@ export const SharedView: React.FC<SharedViewProps> = ({ state, participantRolls 
                   <div className={`absolute inset-0 bg-radial-gradient ${colors.glow} via-transparent to-transparent opacity-50 pointer-events-none`} />
                   
                   <div className="border-b border-bento-border pb-2 mb-2 w-full">
-                      <span className="text-xs uppercase font-mono tracking-widest text-slate-500">Ultimo Lancio</span>
+                      <span className="text-xs uppercase font-mono tracking-widest text-slate-500">DADO MASTER</span>
                   </div>
                   
                   {lastRoll ? (

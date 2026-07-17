@@ -140,6 +140,7 @@ export const ParticipantView: React.FC<ParticipantViewProps> = ({ roomId, userId
                   });
                 }}
                 theme={roomState.campaign.theme}
+                diceLabels={roomState.campaign.diceLabels || ['Tiro salvezza', 'Tiro attacco', 'Prova di abilità', 'Percezione', 'Danno']}
               />
             ) : (
               <div className="bg-[#1a1d23] border border-bento-border rounded-xl p-5 flex flex-col items-center justify-center text-center opacity-50 h-32">

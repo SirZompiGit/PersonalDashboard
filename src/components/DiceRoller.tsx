@@ -131,7 +131,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
       </h2>
 
       {/* Dice Selector Chips */}
-      <div className="grid grid-cols-4 sm:grid-cols-7 gap-2 mb-4">
+      <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mb-4">
         {diceTypes.map((dice) => {
           const isSelected = selectedDice === dice;
           return (
@@ -140,7 +140,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
               type="button"
               onClick={() => onSelectedDiceChange(dice)}
               disabled={isRolling}
-              className={`py-2 px-1 text-center font-mono font-bold text-sm rounded-lg border transition-all cursor-pointer ${
+              className={`py-2 px-3 sm:px-4 text-center font-mono font-bold text-sm rounded-lg border transition-all cursor-pointer flex-1 min-w-[3rem] ${
                 isSelected
                   ? `${colors.bg} text-white ${colors.border} shadow-md ${colors.shadow}`
                   : 'bg-[#0c0d10] text-slate-400 border-bento-border hover:text-slate-200 hover:border-slate-500'
