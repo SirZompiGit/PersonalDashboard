@@ -175,6 +175,9 @@ export default function App() {
         if (params.get('room')) {
            setAppMode('participant_x'); // Read-only shared view for X
            setRoomId(params.get('room'));
+           subscribeToRoom(params.get('room')!, (newRoomState) => {
+               if (newRoomState) setRoomState(newRoomState);
+           });
         } else {
            setAppMode('lite');
         }
@@ -605,6 +608,11 @@ export default function App() {
             setUserId(newUserId);
             setRoomId(pin);
             setAppMode('participant_x');
+            
+            subscribeToRoom(pin, (newRoomState) => {
+               if (newRoomState) setRoomState(newRoomState);
+            });
+            
           } catch (e) {
             alert('Errore Firebase o stanza non trovata. Controlla il PIN e firebase.ts');
           } finally {
@@ -616,7 +624,8 @@ export default function App() {
   }
 
   if (appMode === 'participant_x') {
-    return <ParticipantView roomId={roomId!} userId={userId!} />;
+    if (!roomState) return <div className="min-h-screen bg-[#0c0d10] text-slate-400 flex items-center justify-center">Caricamento stato...</div>;
+    return <ParticipantView roomId={roomId!} userId={userId!} roomState={roomState} />;
   }
 
   // Entirely render the Shared view if screen-share mode is toggled on
