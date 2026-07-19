@@ -152,7 +152,7 @@ export default function App() {
     return DEFAULT_STATE;
   });
 
-  type AppMode = 'welcome' | 'lite' | 'master_x' | 'participant_x';
+  type AppMode = 'welcome' | 'lite' | 'master_x' | 'participant_x' | 'shared_x';
   const [appMode, setAppMode] = useState<AppMode>('welcome');
   const [roomId, setRoomId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
@@ -173,7 +173,7 @@ export default function App() {
       if (params.get('shared') === 'true') {
         setIsUrlShared(true);
         if (params.get('room')) {
-           setAppMode('participant_x'); // Read-only shared view for X
+           setAppMode('shared_x'); // Read-only shared view for X
            setRoomId(params.get('room'));
            subscribeToRoom(params.get('room')!, (newRoomState) => {
                if (newRoomState) setRoomState(newRoomState);
@@ -573,10 +573,18 @@ export default function App() {
 
   // Entirely render the Shared view if we are on the dedicated player URL
   if (isUrlShared) {
-    if (appMode === 'participant_x') {
-      return <ParticipantView roomId={roomId!} userId={userId || 'guest'} roomState={roomState!} />;
+    if (appMode === 'shared_x') {
+      if (!roomState) {
+        return (
+          <div className="min-h-screen bg-[#0c0d10] text-slate-400 flex flex-col gap-4 items-center justify-center">
+            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            <p>Caricamento schermo condiviso...</p>
+          </div>
+        );
+      }
+      return <SharedView state={roomState.campaign} isLite={false} roomUsers={roomState.users} participantRolls={roomState.participantRolls} />;
     }
-    return <SharedView state={state} isLite={appMode === 'lite'} roomUsers={roomState?.users} participantRolls={roomState?.participantRolls} />;
+    return <SharedView state={state} isLite={true} roomUsers={roomState?.users} participantRolls={roomState?.participantRolls} />;
   }
 
   if (appMode === 'welcome') {
