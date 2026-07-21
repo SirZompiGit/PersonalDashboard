@@ -87,11 +87,26 @@ Due assi indipendenti, combinabili liberamente:
 
 | Design | Forme | Superfici | Tipografia |
 |---|---|---|---|
-| **Grimorio** *(predefinito)* | angoli quasi vivi, bordi spessi | opache, ombre morbide, filetto d'accento | serif spaziato |
+| **Grimorio** *(predefinito)* | angoli quasi vivi, bordi spessi | scure e opache, filetto d'accento | serif spaziato |
 | **Arcano** | curve ampie | vetro sfocato, aloni di luce nel colore del tema | lineare, leggera |
 | **Runico** | nessuna curva | piatte, nessuna ombra, bordi chiari netti | monospace ovunque |
+| **White** | curve morbide | chiare, testo scuro, ombre diffuse | lineare |
 
-Il colore scelto pilota tutti e tre.
+Il colore scelto pilota tutti e quattro.
+
+### Sfondo personalizzato
+
+Dalle impostazioni si può mettere un'immagine di sfondo, caricandola da file o
+incollando un indirizzo, con controlli per **ripetizione a mosaico**,
+**sfocatura** e **intensità**.
+
+Le immagini caricate vengono ridotte a 1920px prima di essere conservate: senza
+questo passaggio una foto da telefono esaurirebbe da sola lo spazio del browser,
+impedendo il salvataggio della campagna.
+
+Lo sfondo è una preferenza **del dispositivo**: non entra nel file esportato né
+viene trasmesso alla stanza. Ogni schermo può quindi avere il proprio, cosa utile
+quando la vista condivisa sta su un secondo monitor.
 
 Nella vista condivisa ci sono anche **schermo intero** e **zoom**, utili quando lo schermo è un proiettore o una TV a qualche metro di distanza.
 

@@ -389,189 +389,128 @@ html.theme-transitions {
 }
 
 /* ==========================================================================
-   SANGUE — marmo.
-   Due varianti, scura e chiara. La lastra di pietra sta sul fondo della pagina
-   con venature marcate; i pannelli restano quasi puliti perché è lì che si
-   legge.
+   WHITE — chiaro e pulito.
+   L'unico design su fondo chiaro. Superfici bianche, bordi sottili, ombre
+   morbide e diffuse, tipografia lineare. Pensato per giocare di giorno o per
+   proiettori poco potenti, dove il fondo scuro si legge male.
 
-   La texture non è un'immagine: è un filtro SVG di turbolenza usato come
-   MASCHERA. Questo è ciò che permette alle venature di prendere il colore del
-   tema — una maschera colora un fondo, e quel fondo può essere `var(--theme-*)`.
-   Con una normale immagine di sfondo il colore sarebbe stato fisso.
+   L'app nasce chiara su fondo scuro: qui la scala tipografica va ribaltata.
+   I token coprono le superfici, le regole più sotto coprono i testi e i pochi
+   colori Slate rimasti scritti a mano nei componenti.
    ========================================================================== */
 
-[data-style='sangue-scuro'],
-[data-style='sangue-chiaro'] {
-  /* Il marmo si taglia, non si arrotonda. */
-  --radius-sm: 1px;
-  --radius-md: 2px;
-  --radius-lg: 3px;
-  --radius-xl: 4px;
-  --radius-2xl: 6px;
-  --radius-3xl: 10px;
+[data-style='white'] {
+  --radius-sm: 0.25rem;
+  --radius-md: 0.4rem;
+  --radius-lg: 0.55rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
 
-  --marble-veins: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='1200'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.007 0.018' numOctaves='5' seed='9'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1 0 0 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0 0 0 1 0 0 0 0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='1200' height='1200' filter='url(%23v)'/%3E%3C/svg%3E");
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-bento-void: #ffffff;
+  --color-bento-bg: #eef0f4;
+  --color-bento-panel: #ffffff;
+  --color-bento-item: #f5f6f9;
+  --color-bento-button: #e7e9ef;
+  --color-bento-border: #d3d7e0;
+
+  --color-indigo-glow: rgba(79, 70, 229, 0.08);
 }
 
-[data-style='sangue-scuro'] {
-  --color-bento-void: #08080a;
-  --color-bento-bg: #0d0d10;
-  --color-bento-panel: #15151a;
-  --color-bento-item: #1b1b21;
-  --color-bento-button: #24242c;
-  --color-bento-border: #3b3b45;
-
-  --marble-base: #0b0b0e;
-  --marble-stone: rgb(255 255 255 / 0.055);
-  --marble-vein-strength: 0.5;
+/* Su fondo chiaro le ombre nere vanno alleggerite, altrimenti sporcano. */
+[data-style='white'] .shadow-panel {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 2px 8px rgb(15 23 42 / 0.05);
 }
 
-[data-style='sangue-chiaro'] {
-  --color-bento-void: #fbf9f5;
-  --color-bento-bg: #ece7de;
-  --color-bento-panel: #f7f4ef;
-  --color-bento-item: #f0ece4;
-  --color-bento-button: #e3ddd1;
-  --color-bento-border: #c7bdac;
-
-  --marble-base: #e7e2d9;
-  --marble-stone: rgb(58 52 44 / 0.12);
-  --marble-vein-strength: 0.42;
+[data-style='white'] .shadow-raised {
+  box-shadow: 0 2px 4px rgb(15 23 42 / 0.08), 0 8px 20px rgb(15 23 42 / 0.09);
 }
 
-/* La lastra: colore di fondo della pietra. */
-[data-style='sangue-scuro'] body,
-[data-style='sangue-chiaro'] body {
-  background-color: var(--marble-base);
+[data-style='white'] .shadow-overlay {
+  box-shadow: 0 10px 20px rgb(15 23 42 / 0.12), 0 30px 70px rgb(15 23 42 / 0.18);
 }
 
-/* Due strati di venature: la pietra e il sangue. Fissi rispetto al viewport,
-   così l'app scorre sopra un'unica lastra continua. */
-[data-style='sangue-scuro'] body::before,
-[data-style='sangue-chiaro'] body::before,
-[data-style='sangue-scuro'] body::after,
-[data-style='sangue-chiaro'] body::after {
+[data-style='white'] .font-display {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Inversione della scala tipografica. */
+[data-style='white'] .text-white { color: #0f172a; }
+[data-style='white'] .text-slate-100 { color: #111827; }
+[data-style='white'] .text-slate-200 { color: #1f2937; }
+[data-style='white'] .text-slate-300 { color: #334155; }
+[data-style='white'] .text-slate-400 { color: #52607a; }
+[data-style='white'] .text-slate-500 { color: #6b7688; }
+[data-style='white'] .text-slate-600 { color: #8b94a5; }
+[data-style='white'] .text-slate-700 { color: #a3aab8; }
+
+[data-style='white'] .hover\:text-slate-100:hover,
+[data-style='white'] .hover\:text-white:hover { color: #0f172a; }
+[data-style='white'] .hover\:text-slate-200:hover { color: #1f2937; }
+[data-style='white'] .hover\:text-slate-300:hover { color: #334155; }
+
+[data-style='white'] .placeholder-slate-500::placeholder,
+[data-style='white'] .placeholder-slate-600::placeholder,
+[data-style='white'] .placeholder\:text-slate-600::placeholder { color: #9aa3b2; }
+
+[data-style='white'] .bg-slate-700 { background-color: #dfe3ea; }
+[data-style='white'] .bg-slate-800 { background-color: #e9ecf1; }
+[data-style='white'] .bg-slate-900 { background-color: #f2f4f7; }
+[data-style='white'] .bg-slate-800\/50 { background-color: rgb(233 236 241 / 0.7); }
+[data-style='white'] .bg-slate-900\/50 { background-color: rgb(210 216 226 / 0.5); }
+[data-style='white'] .hover\:bg-slate-600:hover,
+[data-style='white'] .hover\:bg-slate-700:hover { background-color: #d4d9e2; }
+
+[data-style='white'] .border-slate-700,
+[data-style='white'] .border-slate-800,
+[data-style='white'] .border-slate-700\/50 { border-color: #d9dde5; }
+[data-style='white'] .border-white { border-color: #0f172a; }
+[data-style='white'] .hover\:border-slate-500:hover,
+[data-style='white'] .hover\:border-slate-600:hover { border-color: #a9b1c1; }
+
+/* Il colore del tema va scurito per restare leggibile su fondo chiaro. */
+[data-style='white'] .text-theme-400,
+[data-style='white'] .text-theme-500 { color: var(--theme-600); }
+
+/* La barra della vita diventa una scanalatura chiara. */
+[data-style='white'] .hp-track {
+  background-color: #e4e7ee;
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.08);
+}
+
+/* ==========================================================================
+   Sfondo personalizzato
+   Impostato dall'utente, indipendente dal design scelto. Vive su un livello
+   fisso dietro l'app: `.app-surface` (il contenitore radice di ogni schermata)
+   si fa da parte per lasciarlo vedere, mentre i pannelli mantengono la propria
+   superficie e il testo resta leggibile.
+   ========================================================================== */
+
+html.has-background body::before {
   content: '';
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  mask-image: var(--marble-veins);
-  mask-repeat: repeat;
-  -webkit-mask-image: var(--marble-veins);
-  -webkit-mask-repeat: repeat;
+  background-image: var(--bg-image);
+  background-repeat: var(--bg-repeat, no-repeat);
+  background-size: var(--bg-size, cover);
+  background-position: center;
+  opacity: var(--bg-opacity, 1);
+  filter: blur(var(--bg-blur, 0px));
+  /* La sfocatura consuma i bordi dell'immagine: si allarga oltre il viewport
+     per non lasciare una cornice sfumata sui lati. */
+  transform: scale(1.08);
 }
 
-/* Venature della pietra. */
-[data-style='sangue-scuro'] body::before,
-[data-style='sangue-chiaro'] body::before {
-  background-color: var(--marble-stone);
-  mask-size: 1400px 1400px;
-  -webkit-mask-size: 1400px 1400px;
-}
-
-/* Venature nel colore del tema: è il "sangue" del nome. */
-[data-style='sangue-scuro'] body::after,
-[data-style='sangue-chiaro'] body::after {
-  background-color: var(--theme-600);
-  opacity: var(--marble-vein-strength);
-  mask-size: 950px 950px;
-  mask-position: 38% 62%;
-  -webkit-mask-size: 950px 950px;
-  -webkit-mask-position: 38% 62%;
-}
-
-/* Il contenitore radice si fa da parte: senza questo il marmo resterebbe
-   nascosto dietro il fondo opaco dell'app. */
-[data-style='sangue-scuro'] .app-surface,
-[data-style='sangue-chiaro'] .app-surface {
+html.has-background .app-surface {
   position: relative;
   z-index: 1;
   background-color: transparent;
 }
-
-/* Pannelli quasi puliti: un velo di pietra si intravede, ma il testo resta
-   sempre su una superficie compatta. */
-[data-style='sangue-scuro'] .bg-bento-panel,
-[data-style='sangue-chiaro'] .bg-bento-panel {
-  background-color: color-mix(in oklab, var(--color-bento-panel) 93%, transparent);
-}
-
-/* Bordi netti come il taglio di una lastra. */
-[data-style='sangue-scuro'] .shadow-panel,
-[data-style='sangue-chiaro'] .shadow-panel {
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
-}
-
-[data-style='sangue-scuro'] .shadow-raised,
-[data-style='sangue-chiaro'] .shadow-raised {
-  box-shadow: 0 2px 10px rgb(0 0 0 / 0.25);
-}
-
-[data-style='sangue-scuro'] .shadow-overlay,
-[data-style='sangue-chiaro'] .shadow-overlay {
-  box-shadow: 0 20px 60px rgb(0 0 0 / 0.35);
-}
-
-[data-style='sangue-scuro'] .font-display,
-[data-style='sangue-chiaro'] .font-display {
-  letter-spacing: 0.1em;
-}
-
-/* Barra della vita: una scanalatura incisa nella pietra. */
-[data-style='sangue-scuro'] .hp-track,
-[data-style='sangue-chiaro'] .hp-track {
-  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.3);
-  gap: 2px;
-}
-
-/* --------------------------------------------------------------------------
-   Sangue Chiaro: inversione della scala tipografica.
-   L'app nasce chiara su fondo scuro; su marmo chiaro va ribaltata. I token
-   coprono le superfici, queste regole coprono i testi e i pochi colori Slate
-   rimasti nei componenti.
-   -------------------------------------------------------------------------- */
-
-[data-style='sangue-chiaro'] .text-white { color: #14110d; }
-[data-style='sangue-chiaro'] .text-slate-100 { color: #1a1611; }
-[data-style='sangue-chiaro'] .text-slate-200 { color: #26211a; }
-[data-style='sangue-chiaro'] .text-slate-300 { color: #383026; }
-[data-style='sangue-chiaro'] .text-slate-400 { color: #574d3f; }
-[data-style='sangue-chiaro'] .text-slate-500 { color: #6f6455; }
-[data-style='sangue-chiaro'] .text-slate-600 { color: #8b7f6d; }
-[data-style='sangue-chiaro'] .text-slate-700 { color: #a2947f; }
-
-[data-style='sangue-chiaro'] .hover\:text-slate-100:hover,
-[data-style='sangue-chiaro'] .hover\:text-white:hover { color: #14110d; }
-[data-style='sangue-chiaro'] .hover\:text-slate-200:hover { color: #26211a; }
-[data-style='sangue-chiaro'] .hover\:text-slate-300:hover { color: #383026; }
-
-[data-style='sangue-chiaro'] .placeholder-slate-500::placeholder,
-[data-style='sangue-chiaro'] .placeholder-slate-600::placeholder,
-[data-style='sangue-chiaro'] .placeholder\:text-slate-600::placeholder { color: #9b8f7c; }
-
-[data-style='sangue-chiaro'] .bg-slate-700 { background-color: #ddd5c7; }
-[data-style='sangue-chiaro'] .bg-slate-800 { background-color: #e6dfd3; }
-[data-style='sangue-chiaro'] .bg-slate-900 { background-color: #efe9df; }
-[data-style='sangue-chiaro'] .bg-slate-800\/50 { background-color: rgb(230 223 211 / 0.6); }
-[data-style='sangue-chiaro'] .hover\:bg-slate-600:hover,
-[data-style='sangue-chiaro'] .hover\:bg-slate-700:hover { background-color: #d3c9b8; }
-
-[data-style='sangue-chiaro'] .border-slate-700,
-[data-style='sangue-chiaro'] .border-slate-800,
-[data-style='sangue-chiaro'] .border-slate-700\/50 { border-color: #cabfad; }
-[data-style='sangue-chiaro'] .hover\:border-slate-600:hover { border-color: #b3a692; }
-
-/* Il colore del tema va scurito per restare leggibile su pietra chiara. */
-[data-style='sangue-chiaro'] .text-theme-400,
-[data-style='sangue-chiaro'] .text-theme-500 { color: var(--theme-600); }
-
-/* Casi emersi dal controllo delle classi rimaste: su fondo chiaro un bordo
-   bianco è invisibile e un alone quasi nero sembra una macchia. */
-[data-style='sangue-chiaro'] .border-white { border-color: #2b241b; }
-[data-style='sangue-chiaro'] .hover\:border-slate-500:hover { border-color: #9b8f7c; }
-[data-style='sangue-chiaro'] .bg-slate-900\/50 { background-color: rgb(199 189 172 / 0.45); }
-[data-style='sangue-chiaro'] .hover\:bg-bento-button:hover { background-color: #ded7c9; }
 
 /* La transizione fra design tocca misure e superfici, non solo colori. */
 html.theme-transitions [class*='rounded'],
@@ -592,7 +531,6 @@ html.theme-transitions .border-bento-border {
 @layer base {
   body {
     @apply bg-bento-bg text-slate-100 font-sans antialiased;
-    selection: auto;
   }
 
   ::selection {

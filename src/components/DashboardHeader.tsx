@@ -37,6 +37,8 @@ import { STYLES, THEMES, type CampaignStyle, type CampaignTheme } from '../theme
 import { ConfirmInline } from './ui/ConfirmInline';
 import { IconButton } from './ui/IconButton';
 import { Modal } from './ui/Modal';
+import { BackgroundSettings } from './BackgroundSettings';
+import type { UseBackgroundResult } from '../hooks/useBackground';
 import type { CampaignBackup, SaveStatus } from '../hooks/useCampaignState';
 
 interface DashboardHeaderProps {
@@ -63,6 +65,8 @@ interface DashboardHeaderProps {
   onRedo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  /** Lo sfondo è governato da App, così vale anche nella finestra condivisa. */
+  backgroundControls: UseBackgroundResult;
 }
 
 const TOOL_BUTTON =
@@ -90,6 +94,7 @@ export function DashboardHeader({
   onRedo,
   canUndo,
   canRedo,
+  backgroundControls,
 }: DashboardHeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -326,6 +331,13 @@ export function DashboardHeader({
                 </select>
               </label>
             </div>
+
+            <BackgroundSettings
+              background={backgroundControls.background}
+              onChange={backgroundControls.setBackground}
+              onClear={backgroundControls.clearBackground}
+              storageError={backgroundControls.error}
+            />
 
             <div className="flex items-center justify-between gap-4 border-t border-bento-border pt-3">
               <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400">

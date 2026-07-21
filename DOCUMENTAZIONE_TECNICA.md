@@ -88,7 +88,7 @@ La versione dello schema vive nell'involucro di localStorage, **non** dentro `Ca
 | Asse | Attributo su `<html>` | Valori |
 |---|---|---|
 | Colore | `data-theme` | crimson, emerald, sapphire, amber, amethyst, abyss, rose, obsidian |
-| Design | `data-style` | grimorio *(predefinito)*, arcano, runico |
+| Design | `data-style` | grimorio *(predefinito)*, arcano, runico, white |
 
 Si combinano liberamente: 8 × 3.
 
@@ -100,13 +100,24 @@ Si combinano liberamente: 8 × 3.
 
 | Design | Forme | Superfici | Profondità | Tipografia |
 |---|---|---|---|---|
-| **Grimorio** | raggi 1–6px | opache | ombre morbide, filetto d'accento | serif, `tracking` 0.08em |
+| **Grimorio** | raggi 1–6px | scure, opache | ombre morbide, filetto d'accento | serif, `tracking` 0.08em |
 | **Arcano** | raggi 8–40px | vetro semi-trasparente + `backdrop-filter` | aloni nel colore del tema | lineare, `tracking` 0.14em |
 | **Runico** | raggio 0 | piatte, bordi chiari ad alto contrasto | nessuna | monospace su tutto, separatori `double` |
+| **White** | raggi 4–24px | chiare, testo scuro | ombre diffuse e leggere | lineare |
+
+**White** è l'unico su fondo chiaro. L'app nasce chiara su fondo scuro, quindi oltre ai token delle superfici servono regole che ribaltano la scala dei testi (`.text-slate-*`, `.text-white`) e i pochi colori Slate rimasti scritti a mano nei componenti. Per non andare a memoria, l'elenco delle classi da coprire è stato estratto dai sorgenti e confrontato con quelle rimappate.
 
 L'implementazione non tocca i componenti. Tailwind v4 costruisce le utility di raggio e tipografia da variabili (`--radius-*`, `--font-*`) e genera `.font-display { font-family: var(--font-display) }`: ridefinire quelle variabili sotto `data-style` cambia l'aspetto ovunque. Dove serve di più — vetro, aloni, bordi — bastano poche regole che ridefiniscono `.bg-bento-panel`, `.border-bento-border` e `.shadow-*` sotto lo stesso selettore.
 
-Il valore è salvato in `CampaignState.style`: campo **additivo**, assente nelle campagne più vecchie e normalizzato al predefinito, quindi il database resta compatibile. Anche i design rimossi in passato (`bento`, `compatto`) ricadono su `grimorio` senza rompere nulla.
+Il valore è salvato in `CampaignState.style`: campo **additivo**, assente nelle campagne più vecchie e normalizzato al predefinito, quindi il database resta compatibile. Anche i design rimossi in passato (`bento`, `compatto`, `sangue-scuro`, `sangue-chiaro`) ricadono su `grimorio` senza rompere nulla.
+
+### Sfondo personalizzato
+
+Immagine impostata dall'utente, indipendente dal design. Vive su un livello fisso dietro l'app: `.app-surface` — il contenitore radice di ogni schermata — si fa da parte per lasciarlo vedere, mentre i pannelli mantengono la propria superficie e il testo resta leggibile. Ripetizione, sfocatura e intensità viaggiano come variabili CSS su `<html>`.
+
+Non è in `CampaignState`, ma in una chiave di `localStorage` a sé. Tre motivi: non gonfia il file esportato, non viene trasmesso a Firebase a ogni modifica — dove un'immagine in base64 verrebbe riscritta per intero a ogni tasto premuto — e resta una preferenza del dispositivo, giusta perché lo schermo condiviso è spesso un altro monitor.
+
+Le immagini caricate vengono ridisegnate su canvas a un massimo di 1920px e riesportate in JPEG: senza questo passaggio una foto da telefono esaurirebbe la quota di `localStorage`, impedendo il salvataggio della campagna.
 
 ## 4. Dadi
 
