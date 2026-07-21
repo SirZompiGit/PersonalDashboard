@@ -45,7 +45,8 @@ export const THEMES: ThemeDefinition[] = [
   { id: 'amber', label: 'Oste', swatch: '#f59e0b', accent: '#f59e0b' },
   { id: 'amethyst', label: 'Stregone', swatch: '#8b5cf6', accent: '#8b5cf6' },
   { id: 'abyss', label: 'Monaco', swatch: '#06b6d4', accent: '#06b6d4' },
-  { id: 'rose', label: 'Bardo', swatch: '#f43f5e', accent: '#f43f5e' },
+  // Chiave invariata per compatibilità; il colore è magenta, non più rosa.
+  { id: 'rose', label: 'Bardo', swatch: '#d946ef', accent: '#d946ef' },
   { id: 'obsidian', label: 'Ladro', swatch: '#94a3b8', accent: '#94a3b8' },
 ];
 
@@ -53,9 +54,9 @@ export const THEMES: ThemeDefinition[] = [
  * Asse indipendente dal colore: cambia forme, densità e tipografia, non la
  * palette. I due assi si combinano liberamente (8 colori × 3 design).
  */
-export type CampaignStyle = 'bento' | 'grimorio' | 'compatto';
+export type CampaignStyle = 'grimorio' | 'arcano' | 'runico';
 
-export const DEFAULT_STYLE: CampaignStyle = 'bento';
+export const DEFAULT_STYLE: CampaignStyle = 'grimorio';
 
 export interface StyleDefinition {
   id: CampaignStyle;
@@ -63,10 +64,15 @@ export interface StyleDefinition {
   hint: string;
 }
 
+/**
+ * Tre linguaggi visivi distinti, non tre regolazioni dello stesso.
+ * Cambiano forme, superfici, profondità e carattere tipografico; il colore
+ * resta guidato dal tema scelto.
+ */
 export const STYLES: StyleDefinition[] = [
-  { id: 'bento', label: 'Bento', hint: 'Pannelli distinti, angoli morbidi' },
-  { id: 'grimorio', label: 'Grimorio', hint: 'Angoli vivi, filetti, aria da manuale' },
-  { id: 'compatto', label: 'Compatto', hint: 'Densità alta, più contenuto a schermo' },
+  { id: 'grimorio', label: 'Grimorio', hint: 'Angoli vivi, bordi spessi, serif' },
+  { id: 'arcano', label: 'Arcano', hint: 'Vetro sfocato, aloni di luce, curve ampie' },
+  { id: 'runico', label: 'Runico', hint: 'Piatto, monospace, nessuna curva' },
 ];
 
 const THEME_IDS = new Set<string>(THEMES.map((t) => t.id));

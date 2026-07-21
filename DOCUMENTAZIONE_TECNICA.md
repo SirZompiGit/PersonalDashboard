@@ -88,7 +88,7 @@ La versione dello schema vive nell'involucro di localStorage, **non** dentro `Ca
 | Asse | Attributo su `<html>` | Valori |
 |---|---|---|
 | Colore | `data-theme` | crimson, emerald, sapphire, amber, amethyst, abyss, rose, obsidian |
-| Design | `data-style` | bento, grimorio, compatto |
+| Design | `data-style` | grimorio *(predefinito)*, arcano, runico |
 
 Si combinano liberamente: 8 × 3.
 
@@ -96,9 +96,17 @@ Si combinano liberamente: 8 × 3.
 
 > Prima le classi venivano composte a runtime (`` `hover:${colors.hoverBg}` ``). Tailwind estrae i nomi dal testo sorgente a build time, quindi quelle classi non venivano mai generate: hover, anelli di focus e trasparenze erano no-op silenziosi in circa 127 punti.
 
-**Design.** Tailwind v4 costruisce le utility di spaziatura, raggio e tipografia a partire da variabili (`--spacing`, `--radius-*`, `--text-*`). Ridefinirle sotto `data-style` cambia l'intero aspetto **senza toccare una sola classe nei componenti**: `p-4` e `rounded-xl` continuano a funzionare, ma valgono altro. È il motivo per cui *Compatto* comprime tutta l'interfaccia agendo su una sola variabile.
+**Design.** Sono tre linguaggi visivi distinti, non tre regolazioni dello stesso:
 
-Il valore è salvato in `CampaignState.style`: campo **additivo**, assente nelle campagne più vecchie e normalizzato a `bento`, quindi il database resta compatibile.
+| Design | Forme | Superfici | Profondità | Tipografia |
+|---|---|---|---|---|
+| **Grimorio** | raggi 1–6px | opache | ombre morbide, filetto d'accento | serif, `tracking` 0.08em |
+| **Arcano** | raggi 8–40px | vetro semi-trasparente + `backdrop-filter` | aloni nel colore del tema | lineare, `tracking` 0.14em |
+| **Runico** | raggio 0 | piatte, bordi chiari ad alto contrasto | nessuna | monospace su tutto, separatori `double` |
+
+L'implementazione non tocca i componenti. Tailwind v4 costruisce le utility di raggio e tipografia da variabili (`--radius-*`, `--font-*`) e genera `.font-display { font-family: var(--font-display) }`: ridefinire quelle variabili sotto `data-style` cambia l'aspetto ovunque. Dove serve di più — vetro, aloni, bordi — bastano poche regole che ridefiniscono `.bg-bento-panel`, `.border-bento-border` e `.shadow-*` sotto lo stesso selettore.
+
+Il valore è salvato in `CampaignState.style`: campo **additivo**, assente nelle campagne più vecchie e normalizzato al predefinito, quindi il database resta compatibile. Anche i design rimossi in passato (`bento`, `compatto`) ricadono su `grimorio` senza rompere nulla.
 
 ## 4. Dadi
 

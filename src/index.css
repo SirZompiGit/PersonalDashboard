@@ -79,12 +79,15 @@
   --theme-rgb: 6, 182, 212;
 }
 
+/* La chiave resta "rose" per non invalidare le campagne già salvate, ma il
+   colore è passato al magenta: il rosa precedente distava 10° dal rosso di
+   Vampiro e a schermo erano indistinguibili. */
 [data-theme="rose"] {
-  --theme-400: #fb7185;
-  --theme-500: #f43f5e;
-  --theme-600: #e11d48;
-  --theme-950: #4c0519;
-  --theme-rgb: 244, 63, 94;
+  --theme-400: #e879f9;
+  --theme-500: #d946ef;
+  --theme-600: #c026d3;
+  --theme-950: #4a044e;
+  --theme-rgb: 217, 70, 239;
 }
 
 [data-theme="obsidian"] {
@@ -164,18 +167,12 @@ html.theme-transitions {
    funzionare, ma valgono altro.
    -------------------------------------------------------------------------- */
 
-/* BENTO — l'aspetto storico. Pannelli distinti, angoli morbidi. */
-:root,
-[data-style='bento'] {
-  --panel-border-width: 1px;
-  --panel-accent-width: 0px;
-  --display-letter-spacing: 0.025em;
-}
+/* ==========================================================================
+   GRIMORIO — predefinito. Angoli quasi vivi, bordi spessi, filetto d'accento
+   in cima ai pannelli, serif spaziato. L'aria di un manuale di gioco.
+   ========================================================================== */
 
-/*
- * GRIMORIO — angoli quasi vivi, filetti al posto dei riquadri, titoli più
- * presenti. L'aria di un manuale di gioco, senza cambiare i colori.
- */
+:root,
 [data-style='grimorio'] {
   --radius-sm: 1px;
   --radius-md: 2px;
@@ -183,65 +180,185 @@ html.theme-transitions {
   --radius-xl: 3px;
   --radius-2xl: 4px;
   --radius-3xl: 6px;
-
-  --panel-border-width: 2px;
-  --panel-accent-width: 3px;
-  --display-letter-spacing: 0.08em;
-
-  --shadow-panel: 0 1px 0 rgb(255 255 255 / 0.04), 0 2px 10px rgb(0 0 0 / 0.4);
-  --shadow-raised: 0 1px 0 rgb(255 255 255 / 0.06), 0 6px 20px rgb(0 0 0 / 0.5);
-  --shadow-overlay: 0 0 0 1px rgb(255 255 255 / 0.05), 0 24px 64px rgb(0 0 0 / 0.6);
 }
 
-/* Nel Grimorio i pannelli hanno un filetto d'accento sul bordo superiore. */
 [data-style='grimorio'] .shadow-panel,
-[data-style='grimorio'] .shadow-raised {
+:root .shadow-panel {
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.04),
+    0 2px 10px rgb(0 0 0 / 0.4);
+}
+
+[data-style='grimorio'] .shadow-raised,
+:root .shadow-raised {
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.06),
+    0 6px 20px rgb(0 0 0 / 0.5);
+}
+
+/* Filetto d'accento sul bordo superiore dei pannelli. */
+[data-style='grimorio'] .shadow-panel,
+[data-style='grimorio'] .shadow-raised,
+:root .shadow-panel,
+:root .shadow-raised {
   border-top-color: color-mix(in oklab, var(--theme-500) 35%, transparent);
 }
 
-[data-style='grimorio'] .font-display {
-  letter-spacing: var(--display-letter-spacing);
+[data-style='grimorio'] .font-display,
+:root .font-display {
+  letter-spacing: 0.08em;
 }
 
-/*
- * COMPATTO — densità alta. `--spacing` è la base di TUTTA la scala di
- * spaziatura di Tailwind: ridurla comprime margini, padding e gap ovunque
- * in un colpo solo.
- */
-[data-style='compatto'] {
-  --spacing: 0.185rem;
+/* ==========================================================================
+   ARCANO — vetro e luce.
+   Nessun bordo netto: i pannelli sono lastre semi-trasparenti sfocate, tenute
+   insieme da aloni nel colore del tema. Angoli molto morbidi, tipografia
+   lineare e leggera. L'opposto esatto di Grimorio.
+   ========================================================================== */
 
-  --radius-lg: 0.3rem;
-  --radius-xl: 0.4rem;
-  --radius-2xl: 0.5rem;
-  --radius-3xl: 0.75rem;
+[data-style='arcano'] {
+  --radius-sm: 0.5rem;
+  --radius-md: 0.85rem;
+  --radius-lg: 1.1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
 
-  --text-xs: 0.7rem;
-  --text-sm: 0.8rem;
-  --text-base: 0.9rem;
-  --text-lg: 1rem;
-  --text-xl: 1.15rem;
-  --text-2xl: 1.4rem;
-  --text-3xl: 1.7rem;
-  --text-4xl: 2rem;
+  /* Le intestazioni abbandonano il serif: qui non siamo in un libro. */
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
-  --panel-border-width: 1px;
-  --panel-accent-width: 0px;
-  --display-letter-spacing: 0.02em;
-
-  --shadow-panel: 0 1px 3px rgb(0 0 0 / 0.3);
-  --shadow-raised: 0 2px 8px rgb(0 0 0 / 0.35);
-  --shadow-overlay: 0 12px 40px rgb(0 0 0 / 0.5);
+  --color-bento-panel: #171a22;
+  --color-bento-item: #1c2029;
+  --color-bento-button: #232833;
 }
 
-/* La transizione fra design tocca misure, non solo colori. */
+/* Fondo con aloni diffusi, non piatto. */
+[data-style='arcano'] body {
+  background-image:
+    radial-gradient(
+      70rem 50rem at 12% -10%,
+      color-mix(in oklab, var(--theme-600) 16%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      60rem 45rem at 105% 8%,
+      color-mix(in oklab, var(--theme-500) 11%, transparent),
+      transparent 60%
+    );
+  background-attachment: fixed;
+}
+
+/* Le lastre di vetro. */
+[data-style='arcano'] .bg-bento-panel {
+  background-color: color-mix(in oklab, var(--color-bento-panel) 58%, transparent);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+[data-style='arcano'] .bg-bento-bg {
+  background-color: color-mix(in oklab, var(--color-bento-bg) 62%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Il bordo non è una linea: è un accenno di luce. */
+[data-style='arcano'] .border-bento-border {
+  border-color: color-mix(in oklab, var(--theme-400) 20%, transparent);
+}
+
+[data-style='arcano'] .shadow-panel {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 10px 34px color-mix(in oklab, var(--theme-600) 16%, transparent);
+}
+
+[data-style='arcano'] .shadow-raised {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 0 22px color-mix(in oklab, var(--theme-500) 26%, transparent),
+    0 14px 40px rgb(0 0 0 / 0.4);
+}
+
+[data-style='arcano'] .shadow-overlay {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 0 60px color-mix(in oklab, var(--theme-600) 22%, transparent),
+    0 30px 80px rgb(0 0 0 / 0.55);
+}
+
+[data-style='arcano'] .font-display {
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+
+/* ==========================================================================
+   RUNICO — pietra e terminale.
+   Zero raggi, nessuna ombra, superfici piatte, bordi chiari ad alto contrasto
+   e monospace ovunque. Austero e inciso, senza una sola curva.
+   ========================================================================== */
+
+[data-style='runico'] {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+
+  /* Il monospace è il tratto distintivo: vale per ogni testo, non solo i titoli. */
+  --font-display: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Superfici piatte e bordi chiari: la separazione è data dalla linea, non
+     dalla profondità. */
+  --color-bento-bg: #0b0c0f;
+  --color-bento-panel: #131519;
+  --color-bento-item: #191c22;
+  --color-bento-button: #20242b;
+  --color-bento-border: #4d5666;
+
+  --text-xs: 0.72rem;
+  --text-sm: 0.82rem;
+}
+
+/* Nessuna profondità: il design è piatto per scelta. */
+[data-style='runico'] .shadow-panel,
+[data-style='runico'] .shadow-raised {
+  box-shadow: none;
+}
+
+[data-style='runico'] .shadow-overlay {
+  box-shadow: 0 0 0 1px var(--color-bento-border);
+}
+
+/* I separatori orizzontali diventano doppio filetto inciso. */
+[data-style='runico'] .border-b {
+  border-bottom-style: double;
+  border-bottom-width: 3px;
+}
+
+[data-style='runico'] .font-display {
+  letter-spacing: 0.16em;
+  font-weight: 700;
+}
+
+/* Il fondo dei pannelli non sfuma mai. */
+[data-style='runico'] .bg-radial,
+[data-style='runico'] .blur-3xl,
+[data-style='runico'] .blur-\[120px\] {
+  display: none;
+}
+
+/* La transizione fra design tocca misure e superfici, non solo colori. */
 html.theme-transitions [class*='rounded'],
 html.theme-transitions .shadow-panel,
-html.theme-transitions .shadow-raised {
+html.theme-transitions .shadow-raised,
+html.theme-transitions .border-bento-border {
   transition:
     border-radius 300ms ease,
     box-shadow 300ms ease,
-    border-color 300ms ease;
+    border-color 300ms ease,
+    background-color 300ms ease;
 }
 
 /* --------------------------------------------------------------------------

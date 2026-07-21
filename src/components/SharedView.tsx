@@ -43,6 +43,9 @@ import { playCritFailSound, playCritSuccessSound, playRollSound } from '../utils
 
 const LAYOUT_KEY = 'fantasia_shared_health_layout';
 
+/** Lanci dei giocatori mostrati: una striscia, senza andare a capo. */
+const MAX_VISIBLE_ROLLS = 4;
+
 type HealthLayout = 'horizontal' | 'vertical';
 
 interface SharedViewProps {
@@ -170,11 +173,12 @@ export function SharedView({
   const { groups, ungrouped } = groupBars(healthBars, state.healthGroups);
 
   /**
-   * Tutti i lanci recenti, non solo l'ultimo per giocatore.
-   * Prima si vedeva una sola scheda per volta mentre il riquadro restava
-   * mezzo vuoto: con pochi giocatori sprecava tutto lo spazio disponibile.
+   * Gli ultimi quattro lanci, su una riga sola.
+   * Prima ne compariva uno per volta (era filtrato all'ultimo per giocatore) e
+   * il riquadro restava mezzo vuoto; mostrarli tutti e dieci a capo occupava
+   * invece troppa altezza.
    */
-  const visibleRolls = participantRolls;
+  const visibleRolls = participantRolls.slice(0, MAX_VISIBLE_ROLLS);
 
   /**
    * Sotto i 640px la vista verticale non è leggibile: nomi ruotati in colonne
@@ -533,9 +537,8 @@ export function SharedView({
                       Nessun lancio
                     </p>
                   ) : (
-                    // A capo su più righe: riempie lo spazio del riquadro invece
-                    // di allineare le schede su una riga sola.
-                    <div className="flex max-h-[30vh] flex-wrap gap-2 overflow-y-auto overflow-x-hidden pb-1 scrollbar-thin">
+                    // Una striscia sola: le schede si dividono la larghezza.
+                    <div className="flex gap-2">
                       {visibleRolls.map((roll, index) => {
                         const decoded = decodeRollLabel(roll.label);
                         const name = resolveRollerName(decoded, (userId) => {
@@ -548,7 +551,7 @@ export function SharedView({
                         return (
                           <div
                             key={`${roll.timestamp}-${index}`}
-                            className={`relative flex min-w-[92px] flex-1 basis-[92px] flex-col overflow-hidden rounded-lg border bg-bento-bg p-2 shadow-panel ${
+                            className={`relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border bg-bento-bg p-2 shadow-panel ${
                               index === 0 ? 'border-theme-500/40' : 'border-bento-border'
                             }`}
                           >

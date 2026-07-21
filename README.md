@@ -83,7 +83,15 @@ Si può anche **trascinare un file JSON sulla pagina** per importarlo.
 Due assi indipendenti, combinabili liberamente:
 
 - **Colore** — 8 temi: Vampiro, Druido, Mago, Oste, Stregone, Monaco, Bardo, Ladro
-- **Design** — 3 varianti: *Bento* (pannelli distinti, angoli morbidi), *Grimorio* (angoli vivi, filetti, aria da manuale), *Compatto* (densità alta, più contenuto a schermo)
+- **Design** — 3 linguaggi visivi distinti, non tre regolazioni dello stesso:
+
+| Design | Forme | Superfici | Tipografia |
+|---|---|---|---|
+| **Grimorio** *(predefinito)* | angoli quasi vivi, bordi spessi | opache, ombre morbide, filetto d'accento | serif spaziato |
+| **Arcano** | curve ampie | vetro sfocato, aloni di luce nel colore del tema | lineare, leggera |
+| **Runico** | nessuna curva | piatte, nessuna ombra, bordi chiari netti | monospace ovunque |
+
+Il colore scelto pilota tutti e tre.
 
 Nella vista condivisa ci sono anche **schermo intero** e **zoom**, utili quando lo schermo è un proiettore o una TV a qualche metro di distanza.
 

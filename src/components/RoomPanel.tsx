@@ -11,6 +11,9 @@ import { Check, Copy, Link as LinkIcon, Users, Wifi, WifiOff } from 'lucide-reac
 import { ConfirmInline } from './ui/ConfirmInline';
 import { decodeRollLabel, resolveRollerName } from '../lib/participantRolls';
 
+/** Lanci dei giocatori mostrati: una striscia, senza andare a capo. */
+const MAX_VISIBLE_ROLLS = 4;
+
 interface RoomPanelProps {
   pin: string;
   users: Record<string, RoomUser>;
@@ -48,88 +51,89 @@ export function RoomPanel({
 
   return (
     <div className="relative z-10 mx-auto mb-6 flex w-full max-w-7xl flex-col gap-4">
-      <div className="flex flex-col gap-5 rounded-2xl border border-theme-500/30 bg-theme-500/5 p-4 shadow-panel sm:p-6 lg:flex-row lg:items-start">
-        <div className="flex shrink-0 flex-col gap-2 lg:w-52">
-          <div className="rounded-xl border border-theme-500/40 bg-bento-void p-4 text-center shadow-panel">
-            <span className="mb-1 flex items-center justify-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-widest text-theme-400">
-              {online ? (
-                <Wifi className="h-3 w-3" />
-              ) : (
-                <WifiOff className="h-3 w-3 text-amber-400" />
-              )}
-              PIN Stanza
+      <div className="flex flex-col gap-3 rounded-2xl border border-theme-500/30 bg-theme-500/5 p-3 shadow-panel sm:p-4">
+        {/* Striscia compatta: il PIN e le sue azioni stanno su una riga sola,
+            invece di occupare una colonna alta quanto tutto il pannello. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2.5 rounded-lg border border-theme-500/40 bg-bento-void px-3 py-1.5">
+            {online ? (
+              <Wifi className="h-3.5 w-3.5 text-theme-400" />
+            ) : (
+              <WifiOff className="h-3.5 w-3.5 text-amber-400" />
+            )}
+            <span className="font-mono text-[10px] font-bold uppercase tracking-widest text-theme-400">
+              PIN
             </span>
-            <span className="font-display text-4xl font-black tracking-widest text-white">
+            <span className="font-display text-xl font-black tracking-widest text-white sm:text-2xl">
               {pin}
             </span>
           </div>
 
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => copy('pin')}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-bento-border bg-bento-button py-2 text-xs font-bold uppercase tracking-wider text-slate-200 transition-colors duration-200 hover:bg-bento-border"
-            >
-              {copied === 'pin' ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-emerald-400" /> Copiato
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" /> PIN
-                </>
-              )}
-            </button>
+          <button
+            type="button"
+            onClick={() => copy('pin')}
+            className="flex items-center gap-1.5 rounded-lg border border-bento-border bg-bento-button px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-200 transition-colors duration-200 hover:bg-bento-border"
+          >
+            {copied === 'pin' ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-emerald-400" /> Copiato
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" /> PIN
+              </>
+            )}
+          </button>
 
-            {/* Il PIN resta il modo principale: il link è un'aggiunta, per chi
-                preferisce mandare qualcosa su cui cliccare. */}
-            <button
-              type="button"
-              onClick={() => copy('link')}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-theme-500/40 bg-theme-600/15 py-2 text-xs font-bold uppercase tracking-wider text-theme-400 transition-colors duration-200 hover:bg-theme-600/30"
-            >
-              {copied === 'link' ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-emerald-400" /> Copiato
-                </>
-              ) : (
-                <>
-                  <LinkIcon className="h-3.5 w-3.5" /> Invito
-                </>
-              )}
-            </button>
-          </div>
-
-          {confirmingClose ? (
-            <ConfirmInline
-              layout="block"
-              question="Chiudere la stanza? Tutti i giocatori verranno disconnessi."
-              confirmLabel="Chiudi"
-              cancelLabel="Annulla"
-              onConfirm={() => {
-                setConfirmingClose(false);
-                onCloseRoom();
-              }}
-              onCancel={() => setConfirmingClose(false)}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmingClose(true)}
-              className="w-full rounded-lg border border-red-500/30 bg-red-950/30 py-2 text-xs font-bold uppercase tracking-wider text-red-400 transition-colors duration-200 hover:bg-red-500/20"
-            >
-              Chiudi Stanza
-            </button>
-          )}
+          {/* Il PIN resta il modo principale: il link è un'aggiunta, per chi
+              preferisce mandare qualcosa su cui cliccare. */}
+          <button
+            type="button"
+            onClick={() => copy('link')}
+            className="flex items-center gap-1.5 rounded-lg border border-theme-500/40 bg-theme-600/15 px-3 py-2 text-xs font-bold uppercase tracking-wider text-theme-400 transition-colors duration-200 hover:bg-theme-600/30"
+          >
+            {copied === 'link' ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-emerald-400" /> Copiato
+              </>
+            ) : (
+              <>
+                <LinkIcon className="h-3.5 w-3.5" /> Invito
+              </>
+            )}
+          </button>
 
           {!online && (
-            <p className="text-center text-[10px] leading-snug text-amber-400">
-              Connessione assente: le modifiche verranno inviate al ritorno della rete.
-            </p>
+            <span className="text-[10px] leading-snug text-amber-400">
+              Rete assente: le modifiche partiranno al ritorno della connessione.
+            </span>
           )}
+
+          <div className="ml-auto">
+            {confirmingClose ? (
+              <ConfirmInline
+                question="Chiudere la stanza?"
+                confirmLabel="Chiudi"
+                cancelLabel="Annulla"
+                onConfirm={() => {
+                  setConfirmingClose(false);
+                  onCloseRoom();
+                }}
+                onCancel={() => setConfirmingClose(false)}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingClose(true)}
+                className="rounded-lg border border-red-500/30 bg-red-950/30 px-3 py-2 text-xs font-bold uppercase tracking-wider text-red-400 transition-colors duration-200 hover:bg-red-500/20"
+              >
+                Chiudi Stanza
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex min-h-[7rem] flex-1 flex-col gap-2 rounded-xl border border-bento-border bg-bento-bg p-4">
+        <div className="flex flex-col gap-2 rounded-xl border border-bento-border bg-bento-bg p-3">
           <span className="font-mono text-[10px] uppercase tracking-widest text-slate-500">
             Giocatori Connessi ({userList.length})
           </span>
@@ -187,8 +191,9 @@ export function RoomPanel({
             Lanci dei Giocatori
           </span>
 
-          <div className="flex max-h-56 flex-wrap gap-3 overflow-y-auto overflow-x-hidden pb-1 scrollbar-thin">
-            {participantRolls.map((roll, index) => {
+          {/* Una striscia sola con gli ultimi quattro lanci. */}
+          <div className="flex gap-3">
+            {participantRolls.slice(0, MAX_VISIBLE_ROLLS).map((roll, index) => {
               const decoded = decodeRollLabel(roll.label);
               const name = resolveRollerName(decoded, (userId) => {
                 const user = users?.[userId];
@@ -200,7 +205,7 @@ export function RoomPanel({
               return (
                 <div
                   key={`${roll.timestamp}-${index}`}
-                  className={`flex min-w-[130px] flex-1 basis-[130px] flex-col rounded-lg border bg-bento-bg p-3 transition-colors duration-200 hover:border-slate-600 ${
+                  className={`flex min-w-0 flex-1 flex-col rounded-lg border bg-bento-bg p-3 transition-colors duration-200 hover:border-slate-600 ${
                     index === 0 ? 'border-theme-500/40' : 'border-slate-700/50'
                   }`}
                 >

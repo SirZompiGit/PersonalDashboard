@@ -29,6 +29,19 @@ import { NotesPanel } from './ui/NotesPanel';
 import { IconButton } from './ui/IconButton';
 import { useToasts } from '../hooks/useToasts';
 
+/**
+ * La dimensione del titolo scala con la sua lunghezza.
+ * Prima era fissa e i titoli lunghi venivano semplicemente tagliati con i
+ * puntini di sospensione, rendendo illeggibile il nome della campagna.
+ */
+function titleSizeClass(title: string): string {
+  const length = title.length;
+  if (length <= 24) return 'text-xl sm:text-2xl md:text-3xl';
+  if (length <= 38) return 'text-lg sm:text-xl md:text-2xl';
+  if (length <= 55) return 'text-base sm:text-lg md:text-xl';
+  return 'text-sm sm:text-base md:text-lg';
+}
+
 interface CampaignHeaderProps {
   title: string;
   scheduleDay: string;
@@ -148,7 +161,12 @@ export function CampaignHeader({
                 </div>
               ) : (
                 <>
-                  <h1 className="min-w-0 truncate font-display text-xl font-bold tracking-wide text-slate-100 sm:text-2xl md:text-3xl">
+                  <h1
+                    title={title || undefined}
+                    className={`line-clamp-2 min-w-0 font-display font-bold tracking-wide break-words text-slate-100 ${titleSizeClass(
+                      title,
+                    )}`}
+                  >
                     {title || 'Senza Nome'}
                   </h1>
                   <span className="touch-visible shrink-0 opacity-0 transition-opacity duration-200 group-hover/title:opacity-100 group-focus-within/title:opacity-100">
