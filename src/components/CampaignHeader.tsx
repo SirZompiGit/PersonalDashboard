@@ -277,7 +277,10 @@ export function CampaignHeader({
             </button>
           </form>
 
-          <div className="max-h-56 space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
+          {/* `overflow-x-hidden` è necessario: con `overflow-y: auto` il CSS
+              porta anche l'asse orizzontale ad `auto`, e bastava un pixel di
+              troppo per far comparire una barra di scorrimento inutile. */}
+          <div className="max-h-56 space-y-1.5 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
             {players.length === 0 ? (
               <p className="rounded-lg border border-dashed border-bento-border bg-bento-bg px-3 py-4 text-center text-xs italic text-slate-500">
                 Nessun giocatore. Aggiungine uno sopra per iniziare.

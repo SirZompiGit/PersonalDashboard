@@ -208,8 +208,6 @@ export function DiceRoller({
         shaking ? 'shake-animation border-theme-500' : 'border-bento-border'
       }`}
     >
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-
       <h2 className="mb-4 flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wider text-slate-200">
         <span className="h-2 w-2 animate-pulse rounded-full bg-theme-600" />
         Lancio dei Dadi
@@ -329,7 +327,7 @@ export function DiceRoller({
             </div>
           )}
 
-          <div className="max-h-32 space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
+          <div className="max-h-32 space-y-1.5 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
             {diceLabels.map((label) => (
               <div
                 key={label}

@@ -24,8 +24,10 @@ import {
   LayoutTemplate,
   MoreHorizontal,
   Palette,
+  Redo2,
   Settings,
   Trash2,
+  Undo2,
   Upload,
   Volume2,
   VolumeX,
@@ -33,6 +35,7 @@ import {
 } from 'lucide-react';
 import { STYLES, THEMES, type CampaignStyle, type CampaignTheme } from '../theme';
 import { ConfirmInline } from './ui/ConfirmInline';
+import { IconButton } from './ui/IconButton';
 import { Modal } from './ui/Modal';
 import type { CampaignBackup, SaveStatus } from '../hooks/useCampaignState';
 
@@ -56,6 +59,10 @@ interface DashboardHeaderProps {
   onBackToWelcome: () => void;
   /** Con una stanza aperta, uscire la chiude: va confermato. */
   roomOpen: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 const TOOL_BUTTON =
@@ -79,6 +86,10 @@ export function DashboardHeader({
   onRestoreBackup,
   onBackToWelcome,
   roomOpen,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }: DashboardHeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -111,6 +122,29 @@ export function DashboardHeader({
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [settingsOpen, toolsOpen]);
+
+  const undoRedo = (
+    <div className="flex items-center gap-0.5 rounded-xl border border-bento-border bg-bento-panel px-1 py-1">
+      <IconButton
+        label="Annulla (Ctrl+Z)"
+        onClick={onUndo}
+        disabled={!canUndo}
+        tip="bottom"
+        className="disabled:opacity-25"
+      >
+        <Undo2 className="h-4 w-4" />
+      </IconButton>
+      <IconButton
+        label="Ripeti (Ctrl+Shift+Z)"
+        onClick={onRedo}
+        disabled={!canRedo}
+        tip="bottom"
+        className="disabled:opacity-25"
+      >
+        <Redo2 className="h-4 w-4" />
+      </IconButton>
+    </div>
+  );
 
   const tools = (
     <>
@@ -194,6 +228,7 @@ export function DashboardHeader({
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
+          {undoRedo}
           <HomeButton onClick={handleBack} />
           <SettingsButton open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} />
         </div>
@@ -207,6 +242,7 @@ export function DashboardHeader({
 
       <div className="hidden flex-wrap items-center gap-2 md:flex">
         {tools}
+        {undoRedo}
         <HomeButton onClick={handleBack} />
         <SettingsButton open={settingsOpen} onToggle={() => setSettingsOpen((v) => !v)} />
       </div>

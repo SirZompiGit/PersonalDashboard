@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { EyeOff } from 'lucide-react';
+import { EyeOff, Upload } from 'lucide-react';
 
 import { CampaignHeader } from './components/CampaignHeader';
 import { DashboardHeader } from './components/DashboardHeader';
@@ -18,6 +18,7 @@ import { ParticipantView } from './components/ParticipantView';
 import { PlayerCards } from './components/PlayerCards';
 import { RoomPanel } from './components/RoomPanel';
 import { SharedView } from './components/SharedView';
+import { ShortcutsPanel } from './components/ShortcutsPanel';
 import { WelcomeScreen } from './components/WelcomeScreen';
 
 import { type CampaignBackup, restoreBackup, useCampaignState } from './hooks/useCampaignState';
@@ -42,7 +43,18 @@ function readSharedUrl(): { shared: boolean; pin: string | null } {
 export default function App() {
   const sharedUrl = useMemo(readSharedUrl, []);
 
-  const { state, dispatch, saveStatus, saveError, backups, refreshBackups } = useCampaignState();
+  const {
+    state,
+    dispatch,
+    saveStatus,
+    saveError,
+    backups,
+    refreshBackups,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useCampaignState();
   const room = useRoom(state, !sharedUrl.shared);
   const { notify } = useToasts();
 
@@ -54,6 +66,7 @@ export default function App() {
     }
   });
   const [previewShared, setPreviewShared] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(() => {
     try {
       return localStorage.getItem(MUTED_KEY) === 'true';
@@ -63,6 +76,11 @@ export default function App() {
   });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dropActive, setDropActive] = useState(false);
+
+  /** Stato sempre aggiornato per i gestori registrati una volta sola. */
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   /**
    * Campagna letta dalla stanza. Firebase omette le chiavi con array vuoti,
@@ -133,11 +151,24 @@ export default function App() {
           .replace(/^_|_$/g, '')
           .slice(0, 30) || 'campagna';
 
+      // La data nel nome evita che ogni esportazione sovrascriva la precedente
+      // nella cartella Download: si ottiene una cronologia senza fare nulla.
+      const now = new Date();
+      const stamp = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+      ].join('-');
+      const time = [
+        String(now.getHours()).padStart(2, '0'),
+        String(now.getMinutes()).padStart(2, '0'),
+      ].join('');
+
       const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `fantasia_${slug}.json`;
+      anchor.download = `fantasia_${slug}_${stamp}_${time}.json`;
       anchor.click();
       URL.revokeObjectURL(url);
       notify('Campagna esportata.', { kind: 'success' });
@@ -147,33 +178,36 @@ export default function App() {
     }
   }, [state, notify]);
 
+  const importFile = useCallback(
+    (file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = parseImportedCampaign(String(reader.result ?? ''));
+        if (!result.ok || !result.state) {
+          notify(result.error ?? 'File non valido.', { kind: 'error' });
+          return;
+        }
+        const previous = stateRef.current;
+        dispatch({ type: 'REPLACE', state: result.state });
+        notify('Campagna caricata.', {
+          kind: 'success',
+          action: {
+            label: 'Annulla',
+            run: () => dispatch({ type: 'REPLACE', state: previous }),
+          },
+        });
+      };
+      reader.onerror = () => notify('Impossibile leggere il file.', { kind: 'error' });
+      reader.readAsText(file);
+    },
+    [dispatch, notify],
+  );
+
   const handleImportFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     // L'input viene svuotato subito, così lo stesso file si può ricaricare.
     event.target.value = '';
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      // Ogni campo viene validato: prima bastava un JSON senza `healthBars`
-      // per rendere l'app irrecuperabile al ricaricamento successivo.
-      const result = parseImportedCampaign(String(reader.result ?? ''));
-      if (!result.ok || !result.state) {
-        notify(result.error ?? 'File non valido.', { kind: 'error' });
-        return;
-      }
-      const previous = state;
-      dispatch({ type: 'REPLACE', state: result.state });
-      notify('Campagna caricata.', {
-        kind: 'success',
-        action: {
-          label: 'Annulla',
-          run: () => dispatch({ type: 'REPLACE', state: previous }),
-        },
-      });
-    };
-    reader.onerror = () => notify('Impossibile leggere il file.', { kind: 'error' });
-    reader.readAsText(file);
+    if (file) importFile(file);
   };
 
   const handleRestoreBackup = (backup: CampaignBackup) => {
@@ -212,17 +246,106 @@ export default function App() {
     );
   };
 
-  // Ctrl/Cmd+S esporta invece di aprire il salvataggio del browser.
+  /**
+   * Scorciatoie globali.
+   *
+   * L'annulla non si limita alle cancellazioni: copre qualsiasi modifica.
+   * Il caso che risolve davvero è il più banale — un click distratto su una
+   * barra vita che cambia gli HP e prima non aveva alcun ritorno.
+   */
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      if (!event.ctrlKey && !event.metaKey) return;
+      const key = event.key.toLowerCase();
+
+      if (key === 's') {
         event.preventDefault();
         handleExport();
+        return;
       }
+
+      if (key === 'z') {
+        // Nei campi di testo Ctrl+Z resta quello del browser: annullare
+        // l'intera campagna mentre si scrive una nota sarebbe sconcertante.
+        const target = event.target as HTMLElement | null;
+        if (
+          target?.isContentEditable ||
+          ['INPUT', 'TEXTAREA'].includes(target?.tagName ?? '')
+        ) {
+          return;
+        }
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleExport, undo, redo]);
+
+  /**
+   * Import trascinando il file sulla pagina.
+   * `dragover` va annullato su tutta la finestra, altrimenti il browser apre
+   * il JSON al posto nostro.
+   */
+  useEffect(() => {
+    let depth = 0;
+
+    const onDragEnter = (event: DragEvent) => {
+      if (!event.dataTransfer?.types.includes('Files')) return;
+      depth += 1;
+      setDropActive(true);
+    };
+
+    const onDragOver = (event: DragEvent) => {
+      if (!event.dataTransfer?.types.includes('Files')) return;
+      event.preventDefault();
+    };
+
+    // `dragleave` scatta anche passando fra elementi figli: si conta la
+    // profondità per non far lampeggiare l'indicatore.
+    const onDragLeave = () => {
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) setDropActive(false);
+    };
+
+    const onDrop = (event: DragEvent) => {
+      const file = event.dataTransfer?.files?.[0];
+      if (!file) return;
+      event.preventDefault();
+      depth = 0;
+      setDropActive(false);
+
+      if (!/\.json$/i.test(file.name) && file.type !== 'application/json') {
+        notify('Trascina un file JSON di campagna.', { kind: 'error' });
+        return;
+      }
+      importFile(file);
+    };
+
+    window.addEventListener('dragenter', onDragEnter);
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', onDragEnter);
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('drop', onDrop);
+    };
+  }, [importFile, notify]);
+
+  // Esc esce dall'anteprima condivisa: è il gesto che si prova per primo.
+  useEffect(() => {
+    if (!previewShared) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !document.fullscreenElement) setPreviewShared(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleExport]);
+  }, [previewShared]);
 
   // --- Schermo condiviso aperto da URL -------------------------------------
 
@@ -358,6 +481,18 @@ export default function App() {
         className="hidden"
       />
 
+      {dropActive && (
+        <div className="pointer-events-none fixed inset-0 z-[9998] flex items-center justify-center bg-bento-void/80 backdrop-blur-sm animate-fade-in">
+          <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-theme-500 bg-bento-panel px-8 py-6 shadow-overlay">
+            <Upload className="h-8 w-8 text-theme-500" />
+            <p className="font-display text-base font-bold uppercase tracking-wider text-slate-100">
+              Rilascia per importare
+            </p>
+            <p className="text-xs text-slate-500">File JSON di campagna</p>
+          </div>
+        </div>
+      )}
+
       <DashboardHeader
         theme={state.theme}
         onThemeChange={(theme) => dispatch({ type: 'SET_THEME', theme })}
@@ -378,6 +513,10 @@ export default function App() {
           refreshBackups();
         }}
         roomOpen={isMaster}
+        onUndo={undo}
+        onRedo={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
         onBackToWelcome={() => {
           // Con una stanza aperta si chiude prima: altrimenti resterebbe viva
           // sul database, con i giocatori collegati a un master che non c'è più.
@@ -454,11 +593,20 @@ export default function App() {
         />
       </main>
 
-      <footer className="relative z-10 mx-auto mt-10 w-full max-w-7xl border-t border-bento-border pt-5 text-center text-xs text-slate-600">
+      <footer className="relative z-10 mx-auto mt-10 flex w-full max-w-7xl flex-col items-center gap-2 border-t border-bento-border pt-5 text-center text-xs text-slate-600">
         <p className="font-mono">
           Fantasia • Plancia di comando per sessioni di gioco di ruolo
         </p>
+        <button
+          type="button"
+          onClick={() => setShortcutsOpen(true)}
+          className="font-mono text-[11px] text-slate-600 underline-offset-2 transition-colors duration-200 hover:text-theme-400 hover:underline"
+        >
+          Scorciatoie da tastiera (?)
+        </button>
       </footer>
+
+      <ShortcutsPanel open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </div>
   );
 }

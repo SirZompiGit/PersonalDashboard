@@ -12,7 +12,7 @@
  * telefono con il dado per primo, che è ciò che i giocatori guardano davvero.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CampaignState, HealthBar, RollResult } from '../types';
 import type { RoomUser } from '../firebaseUtils';
 import {
@@ -35,7 +35,7 @@ import { Modal } from './ui/Modal';
 import { IconButton } from './ui/IconButton';
 import { getBarColor, groupBars } from '../lib/healthBars';
 import { isCritical, isFumble, parseSides } from '../lib/dice';
-import { decodeRollLabel, latestPerRoller, resolveRollerName } from '../lib/participantRolls';
+import { decodeRollLabel, resolveRollerName } from '../lib/participantRolls';
 import { getThemeAccent } from '../theme';
 import { NARROW_SCREEN, useMediaQuery } from '../hooks/useMediaQuery';
 import { useSharedViewControls } from '../hooks/useSharedViewControls';
@@ -84,7 +84,18 @@ export function SharedView({
 
   const prevTimestampRef = useRef<number | null>(null);
   const timersRef = useRef<number[]>([]);
+  const activePlayerRef = useRef<HTMLDivElement>(null);
   const accent = getThemeAccent(theme);
+
+  /**
+   * Con molti giocatori la lista dei turni scorre, e il giocatore attivo può
+   * finire fuori schermo: proprio l'informazione che serve di più. Viene
+   * riportato in vista a ogni cambio di turno.
+   */
+  useEffect(() => {
+    if (!activePlayerId) return;
+    activePlayerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [activePlayerId]);
 
   const controls = useSharedViewControls();
 
@@ -158,7 +169,12 @@ export function SharedView({
 
   const { groups, ungrouped } = groupBars(healthBars, state.healthGroups);
 
-  const visibleRolls = useMemo(() => latestPerRoller(participantRolls), [participantRolls]);
+  /**
+   * Tutti i lanci recenti, non solo l'ultimo per giocatore.
+   * Prima si vedeva una sola scheda per volta mentre il riquadro restava
+   * mezzo vuoto: con pochi giocatori sprecava tutto lo spazio disponibile.
+   */
+  const visibleRolls = participantRolls;
 
   /**
    * Sotto i 640px la vista verticale non è leggibile: nomi ruotati in colonne
@@ -266,7 +282,7 @@ export function SharedView({
                 </h2>
               </div>
 
-              <div className="max-h-[40vh] flex-1 space-y-2.5 overflow-y-auto pr-1 scrollbar-thin lg:max-h-none">
+              <div className="max-h-[40vh] flex-1 space-y-2.5 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin lg:max-h-none">
                 {players.length === 0 ? (
                   <p className="py-6 text-center text-sm italic text-slate-600">
                     Nessun giocatore nell&apos;iniziativa.
@@ -277,6 +293,7 @@ export function SharedView({
                     return (
                       <div
                         key={player.id}
+                        ref={isActive ? activePlayerRef : undefined}
                         className={`flex flex-col rounded-xl border px-3 py-2.5 transition-colors duration-200 ${
                           isActive
                             ? 'border-theme-500 bg-slate-800 shadow-panel ring-1 ring-theme-500/20'
@@ -378,7 +395,7 @@ export function SharedView({
                 )}
               </div>
 
-              <div className="max-h-[50vh] flex-1 space-y-5 overflow-y-auto pr-1 scrollbar-thin lg:max-h-none">
+              <div className="max-h-[50vh] flex-1 space-y-5 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin lg:max-h-none">
                 {healthBars.length === 0 ? (
                   <p className="py-6 text-center text-sm italic text-slate-600">
                     Nessun tracciatore di salute.
@@ -516,7 +533,9 @@ export function SharedView({
                       Nessun lancio
                     </p>
                   ) : (
-                    <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin scroll-fade-x">
+                    // A capo su più righe: riempie lo spazio del riquadro invece
+                    // di allineare le schede su una riga sola.
+                    <div className="flex max-h-[30vh] flex-wrap gap-2 overflow-y-auto overflow-x-hidden pb-1 scrollbar-thin">
                       {visibleRolls.map((roll, index) => {
                         const decoded = decodeRollLabel(roll.label);
                         const name = resolveRollerName(decoded, (userId) => {
@@ -529,7 +548,9 @@ export function SharedView({
                         return (
                           <div
                             key={`${roll.timestamp}-${index}`}
-                            className="relative flex min-w-[100px] shrink-0 flex-col overflow-hidden rounded-lg border border-bento-border bg-bento-bg p-2 shadow-panel"
+                            className={`relative flex min-w-[92px] flex-1 basis-[92px] flex-col overflow-hidden rounded-lg border bg-bento-bg p-2 shadow-panel ${
+                              index === 0 ? 'border-theme-500/40' : 'border-bento-border'
+                            }`}
                           >
                             <div className="mb-1 flex items-center justify-between gap-1 border-b border-bento-border pb-1">
                               <span

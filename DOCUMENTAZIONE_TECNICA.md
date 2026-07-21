@@ -28,13 +28,22 @@ src/
 Sorgente unica di verità: `CampaignState`, gestito da `campaignReducer` tramite azioni tipizzate. Nessun componente muta lo stato: tutti inviano azioni.
 
 ```
-azione → campaignReducer → nuovo stato
-                             ├→ localStorage (ritardato 400 ms, con backup rotanti)
-                             ├→ BroadcastChannel → altre schede
-                             └→ Firebase (solo master, ritardato 500 ms)
+azione → historyReducer → campaignReducer → nuovo stato
+                                              ├→ localStorage (ritardato 400 ms, con backup rotanti)
+                                              ├→ BroadcastChannel → altre schede
+                                              └→ Firebase (solo master, ritardato 500 ms)
 ```
 
 Il ritardo è essenziale: senza, ogni tasto premuto in un'area di testo scriveva l'intero stato su disco e sulla rete.
+
+### Cronologia (annulla e ripeti)
+
+`state/history.ts` avvolge il reducer senza modificarlo: `campaignReducer` resta puro e sopra si accumulano gli stati passati. Due accortezze la rendono utilizzabile:
+
+- **Fusione delle azioni continue.** Trascinare una barra vita o scrivere in una nota produce decine di azioni al secondo. Le azioni dello stesso tipo sullo stesso bersaglio, entro 700 ms, occupano un'unica voce: un solo `Ctrl+Z` annulla l'intero gesto, non un carattere.
+- **Esclusione della sincronizzazione.** Lo stato che arriva da un'altra scheda entra con l'azione `SYNC`, che non registra nulla in cronologia: `Ctrl+Z` non deve annullare il lavoro fatto in un'altra finestra.
+
+Il caso che risolve davvero non è l'eliminazione — quella aveva già l'annullamento dalla notifica — ma il click distratto su una barra vita, che prima cambiava gli HP senza alcun ritorno.
 
 ### Guardia anti-eco
 
@@ -74,15 +83,22 @@ Serve in tre punti:
 
 La versione dello schema vive nell'involucro di localStorage, **non** dentro `CampaignState`: il payload scritto su Firebase resta identico a quello storico.
 
-## 3. Temi
+## 3. Aspetto: due assi indipendenti
 
-Otto temi: Vampiro, Druido, Mago, Oste, Stregone, Monaco, Bardo, Ladro.
+| Asse | Attributo su `<html>` | Valori |
+|---|---|---|
+| Colore | `data-theme` | crimson, emerald, sapphire, amber, amethyst, abyss, rose, obsidian |
+| Design | `data-style` | bento, grimorio, compatto |
 
-Il tema è un attributo `data-theme` su `<html>` più un set di variabili CSS. I componenti usano classi **statiche** — `bg-theme-600`, `hover:bg-theme-500`, `focus:ring-theme-500/20` — che Tailwind genera davvero e che si ricolorano da sole.
+Si combinano liberamente: 8 × 3.
 
-Le variabili sono registrate con `@property { syntax: "<color>" }`, quindi sono **interpolabili**: il cambio tema è una dissolvenza dell'intera palette senza una riga di JavaScript.
+**Colore.** I componenti usano classi **statiche** — `bg-theme-600`, `hover:bg-theme-500`, `focus:ring-theme-500/20` — che Tailwind genera davvero e che puntano a variabili vive. Le variabili sono registrate con `@property { syntax: "<color>" }`, quindi sono **interpolabili**: il cambio tema è una dissolvenza dell'intera palette senza una riga di JavaScript.
 
 > Prima le classi venivano composte a runtime (`` `hover:${colors.hoverBg}` ``). Tailwind estrae i nomi dal testo sorgente a build time, quindi quelle classi non venivano mai generate: hover, anelli di focus e trasparenze erano no-op silenziosi in circa 127 punti.
+
+**Design.** Tailwind v4 costruisce le utility di spaziatura, raggio e tipografia a partire da variabili (`--spacing`, `--radius-*`, `--text-*`). Ridefinirle sotto `data-style` cambia l'intero aspetto **senza toccare una sola classe nei componenti**: `p-4` e `rounded-xl` continuano a funzionare, ma valgono altro. È il motivo per cui *Compatto* comprime tutta l'interfaccia agendo su una sola variabile.
+
+Il valore è salvato in `CampaignState.style`: campo **additivo**, assente nelle campagne più vecchie e normalizzato a `bento`, quindi il database resta compatibile.
 
 ## 4. Dadi
 

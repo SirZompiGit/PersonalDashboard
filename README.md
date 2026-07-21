@@ -65,13 +65,27 @@ Senza regole, chiunque può leggere e scrivere qualsiasi stanza indovinando un P
 
 | Tasto | Azione |
 |---|---|
+| `?` | Apre l'elenco delle scorciatoie |
 | `1` – `7` | Seleziona il dado (d3 → d20) |
 | `Spazio` o `R` | Lancia il dado |
+| `Ctrl/Cmd + Z` | Annulla l'ultima modifica |
+| `Ctrl/Cmd + Shift + Z` | Ripeti |
 | `Ctrl/Cmd + S` | Esporta la campagna in JSON |
-| `Esc` | Chiude la finestra aperta |
+| `Esc` | Chiude finestre e anteprima condivisa |
 | `←` `→` `↑` `↓` | Regola gli HP della barra che ha il focus (`Shift` per passi da 5) |
 
 Le scorciatoie si disattivano da sole mentre si scrive in un campo di testo.
+
+Si può anche **trascinare un file JSON sulla pagina** per importarlo.
+
+## Aspetto
+
+Due assi indipendenti, combinabili liberamente:
+
+- **Colore** — 8 temi: Vampiro, Druido, Mago, Oste, Stregone, Monaco, Bardo, Ladro
+- **Design** — 3 varianti: *Bento* (pannelli distinti, angoli morbidi), *Grimorio* (angoli vivi, filetti, aria da manuale), *Compatto* (densità alta, più contenuto a schermo)
+
+Nella vista condivisa ci sono anche **schermo intero** e **zoom**, utili quando lo schermo è un proiettore o una TV a qualche metro di distanza.
 
 ## Dati e sicurezza
 

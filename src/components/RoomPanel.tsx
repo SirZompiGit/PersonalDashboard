@@ -142,7 +142,7 @@ export function RoomPanel({
               </span>
             </div>
           ) : (
-            <div className="grid max-h-40 grid-cols-1 gap-2 overflow-y-auto pr-1 scrollbar-thin sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid max-h-40 grid-cols-1 gap-2 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin sm:grid-cols-2 xl:grid-cols-3">
               {userList.map((user) => (
                 <div
                   key={user.id}
@@ -187,7 +187,7 @@ export function RoomPanel({
             Lanci dei Giocatori
           </span>
 
-          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scroll-fade-x">
+          <div className="flex max-h-56 flex-wrap gap-3 overflow-y-auto overflow-x-hidden pb-1 scrollbar-thin">
             {participantRolls.map((roll, index) => {
               const decoded = decodeRollLabel(roll.label);
               const name = resolveRollerName(decoded, (userId) => {
@@ -200,7 +200,9 @@ export function RoomPanel({
               return (
                 <div
                   key={`${roll.timestamp}-${index}`}
-                  className="flex min-w-[150px] shrink-0 flex-col rounded-lg border border-slate-700/50 bg-bento-bg p-3 transition-colors duration-200 hover:border-slate-600"
+                  className={`flex min-w-[130px] flex-1 basis-[130px] flex-col rounded-lg border bg-bento-bg p-3 transition-colors duration-200 hover:border-slate-600 ${
+                    index === 0 ? 'border-theme-500/40' : 'border-slate-700/50'
+                  }`}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2 border-b border-slate-800 pb-1">
                     <span

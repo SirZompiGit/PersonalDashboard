@@ -15,7 +15,8 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { CampaignState } from '../types';
-import { type CampaignAction, campaignReducer } from '../state/campaignReducer';
+import type { CampaignAction } from '../state/campaignReducer';
+import { canRedo, canUndo, createHistory, historyReducer } from '../state/history';
 import { createSeedCampaign } from '../state/defaults';
 import { migrateStoredState, serializeState } from '../state/migrations';
 
@@ -79,14 +80,19 @@ export interface UseCampaignStateResult {
   saveError: string | null;
   backups: CampaignBackup[];
   refreshBackups: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export function useCampaignState(): UseCampaignStateResult {
-  const [state, dispatch] = useReducer(
-    campaignReducer,
-    undefined,
-    () => readStoredState() ?? createSeedCampaign(),
+  const [history, dispatchHistory] = useReducer(historyReducer, undefined, () =>
+    createHistory(readStoredState() ?? createSeedCampaign()),
   );
+
+  const state = history.present;
+  const dispatch = dispatchHistory as React.Dispatch<CampaignAction>;
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -102,13 +108,18 @@ export function useCampaignState(): UseCampaignStateResult {
 
   const refreshBackups = useCallback(() => setBackups(readBackups()), []);
 
-  /** Applica uno stato arrivato da un'altra scheda senza rimandarlo indietro. */
+  /**
+   * Applica uno stato arrivato da un'altra scheda senza rimandarlo indietro.
+   * Usa `SYNC` e non `REPLACE`: non è un gesto dell'utente, quindi non deve
+   * finire in cronologia — altrimenti Ctrl+Z annullerebbe le modifiche fatte
+   * in un'altra finestra.
+   */
   const applyExternal = useCallback((json: string) => {
     if (json === lastSyncedRef.current) return;
     const incoming = migrateStoredState(json);
     if (!incoming) return;
     lastSyncedRef.current = serializeState(incoming);
-    dispatch({ type: 'REPLACE', state: incoming });
+    dispatchHistory({ type: 'SYNC', state: incoming });
   }, []);
 
   // Ascolto delle altre schede: BroadcastChannel per la reattività, evento
@@ -222,8 +233,22 @@ export function useCampaignState(): UseCampaignStateResult {
     };
   }, []);
 
+  const undo = useCallback(() => dispatchHistory({ type: 'UNDO' }), []);
+  const redo = useCallback(() => dispatchHistory({ type: 'REDO' }), []);
+
   return useMemo(
-    () => ({ state, dispatch, saveStatus, saveError, backups, refreshBackups }),
-    [state, saveStatus, saveError, backups, refreshBackups],
+    () => ({
+      state,
+      dispatch,
+      saveStatus,
+      saveError,
+      backups,
+      refreshBackups,
+      undo,
+      redo,
+      canUndo: canUndo(history),
+      canRedo: canRedo(history),
+    }),
+    [state, dispatch, saveStatus, saveError, backups, refreshBackups, undo, redo, history],
   );
 }

@@ -15,12 +15,23 @@
 import { type FormEvent, useState } from 'react';
 import type { HealthBar } from '../types';
 import type { CampaignAction } from '../state/campaignReducer';
-import { Check, Edit2, Folder, Heart, Plus, Settings2, Trash2, X } from 'lucide-react';
+import {
+  Check,
+  ChevronRight,
+  Edit2,
+  Folder,
+  Heart,
+  Plus,
+  Settings2,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { HealthBarItem } from './HealthBarItem';
 import { ConfirmInline } from './ui/ConfirmInline';
 import { EmptyState } from './ui/EmptyState';
 import { IconButton } from './ui/IconButton';
 import { useToasts } from '../hooks/useToasts';
+import { usePersistentSet } from '../hooks/usePersistentState';
 import {
   DEFAULT_ZERO_HP_TEXT,
   MAX_HP,
@@ -80,6 +91,10 @@ export function HealthBarsManager({
   dispatch,
 }: HealthBarsManagerProps) {
   const { notifyUndo } = useToasts();
+
+  // Con venti mostri a schermo, poter chiudere un gruppo è la differenza fra
+  // trovare la barra giusta e cercarla. La scelta viene ricordata.
+  const collapsed = usePersistentSet('fantasia_collapsed_groups');
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -272,7 +287,7 @@ export function HealthBarsManager({
             </button>
           </div>
 
-          <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
+          <div className="max-h-40 space-y-1.5 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
             {healthGroups.length === 0 ? (
               <p className="py-2 text-center text-[11px] italic text-slate-600">
                 Nessun gruppo personalizzato.
@@ -564,31 +579,45 @@ export function HealthBarsManager({
         />
       ) : (
         <div className="space-y-6">
-          {groups.map(({ name, bars }) => (
-            <div key={name} className="space-y-3">
-              <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1">
-                <span className="rounded border border-bento-border/40 bg-bento-bg px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  {name}
-                </span>
-                <span className="font-mono text-[10px] text-slate-500">({bars.length})</span>
-              </div>
-              <div className="space-y-3">{bars.map(renderBar)}</div>
-            </div>
-          ))}
+          {[
+            ...groups,
+            ...(ungrouped.length > 0
+              ? [{ name: 'Senza Gruppo', bars: ungrouped, key: '__ungrouped__' }]
+              : []),
+          ].map((group) => {
+            const key = 'key' in group ? group.key : group.name;
+            const isCollapsed = collapsed.has(key);
 
-          {ungrouped.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1">
-                <span className="rounded border border-bento-border/40 bg-bento-bg px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                  Senza Gruppo
-                </span>
-                <span className="font-mono text-[10px] text-slate-500">
-                  ({ungrouped.length})
-                </span>
+            return (
+              <div key={key} className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => collapsed.toggle(key)}
+                  aria-expanded={!isCollapsed}
+                  className="group/head flex w-full items-center gap-2 border-b border-bento-border/30 pb-1 text-left transition-colors duration-200 hover:border-bento-border"
+                >
+                  <ChevronRight
+                    className={`h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform duration-200 group-hover/head:text-slate-300 ${
+                      isCollapsed ? '' : 'rotate-90'
+                    }`}
+                  />
+                  <span className="rounded border border-bento-border/40 bg-bento-bg px-2 py-0.5 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    {group.name}
+                  </span>
+                  <span className="font-mono text-[10px] text-slate-500">
+                    ({group.bars.length})
+                  </span>
+                  {isCollapsed && (
+                    <span className="ml-auto font-mono text-[10px] text-slate-600">
+                      nascosto
+                    </span>
+                  )}
+                </button>
+
+                {!isCollapsed && <div className="space-y-3">{group.bars.map(renderBar)}</div>}
               </div>
-              <div className="space-y-3">{ungrouped.map(renderBar)}</div>
-            </div>
-          )}
+            );
+          })}
         </div>
       )}
     </section>

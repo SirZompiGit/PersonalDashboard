@@ -120,7 +120,7 @@ function ItemSection({
         </div>
       )}
 
-      <div className="max-h-40 space-y-1 overflow-y-auto pr-1 scrollbar-thin">
+      <div className="max-h-40 space-y-1 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
         {items.length === 0 ? (
           <p className="text-[11px] italic text-slate-600">{emptyText}</p>
         ) : (
