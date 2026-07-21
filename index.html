@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="it" data-theme="crimson">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Fantasia</title>
+    <meta
+      name="description"
+      content="Fantasia — plancia di comando per sessioni di gioco di ruolo: partecipanti, lancio dadi, barre della vita, schede giocatore e schermo condiviso."
+    />
+    <meta name="theme-color" content="#0c0d10" />
+    <meta name="color-scheme" content="dark" />
+
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230c0d10'/%3E%3Cpath d='M16 5l9 5.5v11L16 27l-9-5.5v-11z' fill='none' stroke='%23ef4444' stroke-width='2.2' stroke-linejoin='round'/%3E%3Cpath d='M16 5v22M7 10.5l9 5.5 9-5.5' fill='none' stroke='%23ef4444' stroke-width='1.4' opacity='.55'/%3E%3C/svg%3E"
+    />
+
+    <!-- I font erano caricati con @import dentro il CSS: richiesta serializzata,
+         render bloccante e nessun preconnect. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

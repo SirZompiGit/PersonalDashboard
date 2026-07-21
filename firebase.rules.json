@@ -1,0 +1,69 @@
+{
+  "_commento": [
+    "REGOLE DI RIFERIMENTO — NON APPLICATE.",
+    "",
+    "Sono più strette della configurazione di test predefinita: leggile e",
+    "valutale prima del deploy, perché potrebbero richiedere aggiustamenti",
+    "rispetto a come usi il database oggi.",
+    "",
+    "Deploy:  firebase deploy --only database",
+    "",
+    "Cosa cambia rispetto all'accesso libero:",
+    "  - si può leggere e scrivere solo dentro rooms/{pin}, mai la radice;",
+    "  - il PIN deve essere esattamente 6 cifre, quindi non si possono creare",
+    "    nodi arbitrari;",
+    "  - una stanza esistente non può essere sovrascritta in blocco: si scrive",
+    "    solo nei rami campaign, users e participantRolls;",
+    "  - ogni utente può modificare solo il proprio nodo, tranne il campo",
+    "    assignedPlayerId che il master usa per assegnare i personaggi;",
+    "  - i lanci sono limitati a 10 elementi.",
+    "",
+    "Limite noto: senza autenticazione non è possibile distinguere il master",
+    "dai giocatori. Per farlo servirebbe Firebase Authentication (anche solo",
+    "anonima) e un campo masterUid nella stanza."
+  ],
+
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      "$pin": {
+        ".read": "$pin.matches(/^[0-9]{6}$/)",
+        ".write": "$pin.matches(/^[0-9]{6}$/) && (!data.exists() || !newData.exists())",
+
+        "campaign": {
+          ".write": "$pin.matches(/^[0-9]{6}$/)",
+          "title": { ".validate": "newData.isString() && newData.val().length <= 80" }
+        },
+
+        "users": {
+          "$userId": {
+            ".write": "$pin.matches(/^[0-9]{6}$/)",
+            "id": { ".validate": "newData.val() === $userId" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "notes": { ".validate": "newData.isString() && newData.val().length <= 20000" },
+            "assignedPlayerId": {
+              ".validate": "newData.isString() || newData.val() === null"
+            },
+            "$altro": { ".validate": false }
+          }
+        },
+
+        "participantRolls": {
+          ".write": "$pin.matches(/^[0-9]{6}$/)",
+          ".validate": "newData.hasChildren() ? newData.numChildren() <= 10 : true",
+          "$index": {
+            "diceType": { ".validate": "newData.isString() && newData.val().matches(/^d[0-9]{1,3}$/)" },
+            "result": { ".validate": "newData.isNumber() && newData.val() >= 1" },
+            "timestamp": { ".validate": "newData.isNumber()" },
+            "label": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "$altro": { ".validate": false }
+          }
+        },
+
+        "$altro": { ".validate": false }
+      }
+    }
+  }
+}
