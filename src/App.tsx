@@ -24,7 +24,8 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { type CampaignBackup, restoreBackup, useCampaignState } from './hooks/useCampaignState';
 import { useRoom } from './hooks/useRoom';
 import { useToasts } from './hooks/useToasts';
-import { useBackground } from './hooks/useBackground';
+import { useMedia } from './hooks/useMedia';
+import { setRoomMedia, subscribeToRoomMedia } from './firebaseUtils';
 import { normalizeCampaign, parseImportedCampaign } from './state/migrations';
 import { applyTheme } from './theme';
 import { setMuted } from './utils/audio';
@@ -59,10 +60,10 @@ export default function App() {
   const room = useRoom(state, !sharedUrl.shared);
   const { notify } = useToasts();
 
-  // Governato qui e non nell'intestazione: così lo sfondo si applica anche
+  // Governato qui e non nell'intestazione: così le immagini si applicano anche
   // nella finestra dello schermo condiviso e nella vista dei giocatori, dove
   // l'intestazione non viene renderizzata.
-  const backgroundControls = useBackground();
+  const mediaControls = useMedia();
 
   const [localMode, setLocalMode] = useState<LocalMode>(() => {
     try {

@@ -157,7 +157,35 @@ export async function pushParticipantRoll(pin: string, roll: RollResult): Promis
 }
 
 export async function deleteRoom(pin: string): Promise<void> {
-  await remove(ref(getDb(), `rooms/${pin}`));
+  const db = getDb();
+  await Promise.all([
+    remove(ref(db, `rooms/${pin}`)),
+    remove(ref(db, `${MEDIA_PATH}/${pin}`)),
+  ]);
+}
+
+/**
+ * Immagini della stanza (sfondo e scena).
+ *
+ * Vivono su un ramo SEPARATO da `rooms/{pin}`, e non è un dettaglio: la
+ * sottoscrizione alla stanza riceve l'intero nodo a ogni modifica della
+ * campagna. Con le immagini lì dentro, ogni tasto premuto negli appunti
+ * avrebbe rispedito centinaia di kilobyte a tutti i giocatori collegati.
+ * Su un ramo a parte vengono trasferite solo quando cambiano davvero.
+ */
+const MEDIA_PATH = 'roomMedia';
+
+export async function setRoomMedia(pin: string, media: unknown): Promise<void> {
+  await set(ref(getDb(), `${MEDIA_PATH}/${pin}`), clean(media));
+}
+
+export function subscribeToRoomMedia(
+  pin: string,
+  callback: (media: unknown | null) => void,
+): () => void {
+  return onValue(ref(getDb(), `${MEDIA_PATH}/${pin}`), (snap) => {
+    callback(snap.exists() ? snap.val() : null);
+  });
 }
 
 /**

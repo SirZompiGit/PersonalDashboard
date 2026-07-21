@@ -452,7 +452,9 @@ export function DiceRoller({
 
         {isRolling ? (
           <div className="flex flex-col items-center">
-            <span className="animate-pulse font-display text-5xl font-extrabold tracking-tighter text-theme-500/90 blur-[1px] sm:text-6xl">
+            {/* Niente sfocatura sui numeri che scorrono: rendeva la cifra
+                sgranata invece di dare un senso di movimento. */}
+            <span className="animate-pulse font-display text-5xl font-extrabold tracking-tighter text-theme-500/90 sm:text-6xl">
               {tempNumber ?? '?'}
             </span>
             <span className="mt-3 animate-pulse font-mono text-xs uppercase tracking-widest text-theme-500/60">
