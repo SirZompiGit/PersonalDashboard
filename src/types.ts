@@ -43,6 +43,12 @@ export interface HealthBar {
   group?: string;
   /** Testo mostrato a 0 HP. */
   zeroHpText?: string;
+  /**
+   * Allerta visiva sotto il 25% dei punti ferita.
+   * Campo additivo: assente sulle barre create prima, dove viene attivato di
+   * default dalla normalizzazione.
+   */
+  lowHpAlert?: boolean;
 }
 
 export interface RollResult {

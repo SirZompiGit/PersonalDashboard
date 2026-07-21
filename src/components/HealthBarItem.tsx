@@ -26,6 +26,7 @@ import {
   DEFAULT_ZERO_HP_TEXT,
   SEGMENT_THRESHOLD,
   healthRatio,
+  isLowHp,
 } from '../lib/healthBars';
 import {
   playClickSound,
@@ -162,6 +163,7 @@ export function HealthBarItem({
   const percentage = healthRatio(bar) * 100;
   const activeColor = getBarColor(bar);
   const useSegments = bar.maxValue <= SEGMENT_THRESHOLD;
+  const inAlert = isLowHp(bar);
 
   /** Converte la posizione del puntatore in punti ferita. */
   const valueFromPointer = (event: ReactPointerEvent<HTMLDivElement>): number => {
@@ -243,14 +245,17 @@ export function HealthBarItem({
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
       onKeyDown={handleKeyDown}
+      // Il colore attivo viaggia come variabile CSS: l'animazione di allerta ha
+      // così accesso al colore reale della barra, che cambia a runtime.
+      style={{ '--hp-color': activeColor } as React.CSSProperties}
       // `hp-track` è l'aggancio con cui ogni design ridefinisce l'aspetto della
       // barra. I colori sono token, non più esadecimali scritti a mano: era
       // l'ultimo punto che ignorava il design scelto.
       className={`hp-track relative z-10 flex overflow-hidden rounded-lg border border-bento-border bg-bento-item p-[3px] select-none transition-shadow duration-200 ${
-        isVertical ? 'h-full w-full flex-col-reverse' : 'h-8 w-full'
-      } ${bar.maxValue > 30 ? 'gap-[1px]' : 'gap-[2px]'} ${
-        readOnly ? '' : 'cursor-pointer touch-none'
-      } ${flashRing}`}
+        inAlert ? 'is-alert' : ''
+      } ${isVertical ? 'h-full w-full flex-col-reverse' : 'h-8 w-full'} ${
+        bar.maxValue > 30 ? 'gap-[1px]' : 'gap-[2px]'
+      } ${readOnly ? '' : 'cursor-pointer touch-none'} ${flashRing}`}
     >
       {useSegments ? (
         Array.from({ length: bar.maxValue }, (_, index) => {

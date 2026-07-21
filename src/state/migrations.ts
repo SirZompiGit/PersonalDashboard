@@ -130,6 +130,9 @@ function normalizeHealthBar(value: unknown): HealthBar | null {
     staticColor: asColor(value.staticColor, '#10b981'),
     gradientColors: normalizeGradient(value.gradientColors),
     zeroHpText: zeroHpText ? zeroHpText.slice(0, 30) : DEFAULT_ZERO_HP_TEXT,
+    // Attiva salvo esplicita disattivazione: le barre create prima non hanno
+    // il campo e devono comportarsi come quelle nuove.
+    lowHpAlert: value.lowHpAlert !== false,
   };
 
   // `group` resta assente quando è vuoto: Firebase rifiuta i valori undefined

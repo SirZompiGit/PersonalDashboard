@@ -28,6 +28,15 @@
     ".write": false,
 
     "rooms": {
+      "_nota": [
+        "La lettura di /rooms è consentita SOLO tramite la query indicizzata su",
+        "lastSeen: serve alla raccolta delle stanze abbandonate, che i client",
+        "eseguono al proprio avvio. Senza un backend è l'unico modo per liberare",
+        "le stanze il cui master ha chiuso il browser."
+      ],
+      ".read": "query.orderByChild === 'lastSeen' && query.limitToFirst <= 50",
+      ".indexOn": ["lastSeen"],
+
       "$pin": {
         ".read": "$pin.matches(/^[0-9]{6}$/)",
         ".write": "$pin.matches(/^[0-9]{6}$/) && (!data.exists() || !newData.exists())",
@@ -35,6 +44,11 @@
         "campaign": {
           ".write": "$pin.matches(/^[0-9]{6}$/)",
           "title": { ".validate": "newData.isString() && newData.val().length <= 80" }
+        },
+
+        "lastSeen": {
+          ".write": "$pin.matches(/^[0-9]{6}$/)",
+          ".validate": "newData.isNumber()"
         },
 
         "users": {

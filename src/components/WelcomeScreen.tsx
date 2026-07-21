@@ -51,7 +51,7 @@ export function WelcomeScreen({
   const disabled = isConnecting || !multiplayerAvailable;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-bento-bg p-4 font-sans text-slate-100 sm:p-8">
+    <div className="app-surface flex min-h-screen flex-col items-center justify-center gap-6 bg-bento-bg p-4 font-sans text-slate-100 sm:p-8">
       <header className="text-center">
         <h1 className="font-display text-3xl font-black uppercase tracking-[0.2em] text-slate-100 sm:text-4xl">
           Fantasia

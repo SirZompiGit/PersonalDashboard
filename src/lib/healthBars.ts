@@ -24,6 +24,19 @@ export const SEGMENT_THRESHOLD = 60;
 
 export const DEFAULT_ZERO_HP_TEXT = 'DEFUNTO';
 
+/** Soglia sotto la quale scatta l'allerta visiva, se attiva sulla barra. */
+export const LOW_HP_THRESHOLD = 0.25;
+
+/**
+ * Una barra è in allerta quando è sotto soglia ma non ancora a zero: a zero c'è
+ * già l'etichetta "DEFUNTO", e continuare a pulsare sarebbe solo rumore.
+ */
+export function isLowHp(bar: HealthBar): boolean {
+  if (bar.lowHpAlert === false) return false;
+  if (bar.currentValue <= 0) return false;
+  return healthRatio(bar) <= LOW_HP_THRESHOLD;
+}
+
 export const DEFAULT_HEALTH_GROUPS = ['Nemici', 'Alleati', 'PG'];
 
 export function clampHp(value: number, max: number): number {

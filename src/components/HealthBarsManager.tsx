@@ -70,6 +70,7 @@ interface FormValues {
   high: string;
   group: string;
   zeroHpText: string;
+  lowHpAlert: boolean;
 }
 
 const EMPTY_FORM: FormValues = {
@@ -83,6 +84,7 @@ const EMPTY_FORM: FormValues = {
   high: '#10b981',
   group: '',
   zeroHpText: DEFAULT_ZERO_HP_TEXT,
+  lowHpAlert: true,
 };
 
 export function HealthBarsManager({
@@ -132,6 +134,7 @@ export function HealthBarsManager({
       high: bar.gradientColors.high,
       group: bar.group ?? '',
       zeroHpText: bar.zeroHpText ?? DEFAULT_ZERO_HP_TEXT,
+      lowHpAlert: bar.lowHpAlert !== false,
     });
   };
 
@@ -157,6 +160,7 @@ export function HealthBarsManager({
       gradientColors: { low: form.low, mid: form.mid, high: form.high },
       group: form.group || undefined,
       zeroHpText: form.zeroHpText.trim() || DEFAULT_ZERO_HP_TEXT,
+      lowHpAlert: form.lowHpAlert,
     };
 
     if (editingId) dispatch({ type: 'UPDATE_HEALTH_BAR', id: editingId, changes: payload });
@@ -428,6 +432,24 @@ export function HealthBarsManager({
                 maxLength={20}
                 className={`${FIELD} font-mono uppercase tracking-wider`}
               />
+            </label>
+
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-bento-border bg-bento-panel px-3 py-2.5 select-none md:col-span-2">
+              <input
+                type="checkbox"
+                checked={form.lowHpAlert}
+                onChange={(event) => setField('lowHpAlert', event.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-theme-500"
+              />
+              <span className="min-w-0">
+                <span className="block text-xs font-medium text-slate-200">
+                  Allerta sotto il 25%
+                </span>
+                <span className="block text-[11px] leading-snug text-slate-500">
+                  La barra pulsa quando i punti ferita scendono sotto un quarto. Si spegne da
+                  sola a 0 HP, dove compare già l&apos;etichetta.
+                </span>
+              </span>
             </label>
 
             <label className="space-y-1">

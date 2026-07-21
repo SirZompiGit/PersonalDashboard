@@ -103,7 +103,7 @@ export function ParticipantView({
   };
 
   return (
-    <div className="flex min-h-screen flex-col gap-4 bg-bento-bg p-3 font-sans text-slate-400 sm:p-5 lg:p-8">
+    <div className="app-surface flex min-h-screen flex-col gap-4 bg-bento-bg p-3 font-sans text-slate-400 sm:p-5 lg:p-8">
       <header className="flex shrink-0 flex-col gap-3 rounded-xl border border-bento-border bg-bento-panel p-3 shadow-panel sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <div className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800 font-mono font-bold text-slate-300">

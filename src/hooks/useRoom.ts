@@ -23,6 +23,8 @@ import {
   leaveRoom,
   subscribeToConnection,
   subscribeToRoom,
+  sweepAbandonedRooms,
+  touchRoom,
   updateRoomCampaign,
 } from '../firebaseUtils';
 import { FIREBASE_SETUP_MESSAGE, isFirebaseConfigured } from '../firebase';
@@ -31,6 +33,22 @@ import { sanitizeUserName } from '../lib/participantRolls';
 
 const SESSION_KEY = 'fantasia_room_session';
 const CAMPAIGN_PUSH_DELAY = 500;
+
+/**
+ * Dopo quanto una stanza senza più nessun master collegato viene eliminata dal
+ * database.
+ *
+ * Non è un timer che gira da qualche parte: è la soglia con cui i client
+ * riconoscono le stanze abbandonate e le raccolgono al proprio avvio.
+ */
+const ABANDONED_ROOM_TIMEOUT = 5 * 60 * 1000;
+
+/**
+ * Ogni quanto il master dichiara di essere ancora lì.
+ * Deve essere ben più corto della soglia, altrimenti una stanza viva
+ * rischierebbe di essere scambiata per abbandonata.
+ */
+const HEARTBEAT_INTERVAL = 60 * 1000;
 
 export type RoomRole = 'master' | 'participant' | 'viewer';
 export type RoomStatus = 'idle' | 'connecting' | 'connected' | 'error';
@@ -179,6 +197,44 @@ export function useRoom(campaign: CampaignState, autoResume = true): UseRoomResu
       if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
     };
   }, [campaign, session]);
+
+  /**
+   * Battito del master: finché la sua scheda è aperta, la stanza risulta viva.
+   * Quando smette — browser chiuso, computer spento — il segnale si ferma e la
+   * stanza diventa raccoglibile.
+   */
+  useEffect(() => {
+    if (session?.role !== 'master') return;
+
+    const beat = () =>
+      touchRoom(session.pin).catch((e) =>
+        console.warn('[fantasia] battito della stanza non inviato:', e),
+      );
+
+    beat();
+    const id = setInterval(beat, HEARTBEAT_INTERVAL);
+    return () => clearInterval(id);
+  }, [session]);
+
+  /**
+   * Raccolta delle stanze abbandonate, una volta per sessione.
+   *
+   * Senza un backend nessuno può cancellare una stanza il cui master ha chiuso
+   * il browser: sono i client stessi a fare pulizia quando aprono l'app.
+   */
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+
+    sweepAbandonedRooms(ABANDONED_ROOM_TIMEOUT)
+      .then((count) => {
+        if (count > 0) console.info(`[fantasia] stanze abbandonate liberate: ${count}`);
+      })
+      .catch((e) => {
+        // Non è un errore bloccante: se le regole non consentono la lettura di
+        // /rooms, la pulizia semplicemente non avviene.
+        console.warn('[fantasia] pulizia stanze non riuscita:', e);
+      });
+  }, []);
 
   const openAsMaster = useCallback(
     async (initial: CampaignState) => {

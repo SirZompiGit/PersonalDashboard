@@ -211,7 +211,7 @@ export function SharedView({
   const hasNotes = Boolean(state.campaignNotes.trim()) || Boolean(personalNotesSlot);
 
   return (
-    <div className="relative flex min-h-full w-full flex-col overflow-x-hidden bg-bento-bg p-3 font-sans text-slate-100 sm:p-5 lg:p-8">
+    <div className="app-surface relative flex min-h-full w-full flex-col overflow-x-hidden bg-bento-bg p-3 font-sans text-slate-100 sm:p-5 lg:p-8">
       {/* Aure di sfondo */}
       <div className="pointer-events-none fixed -top-[10%] -left-[10%] h-[50%] w-[50%] rounded-full bg-theme-500/5 blur-[120px]" />
       <div className="pointer-events-none fixed -right-[10%] -bottom-[10%] h-[50%] w-[50%] rounded-full bg-slate-900/50 blur-[120px]" />

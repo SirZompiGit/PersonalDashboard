@@ -468,7 +468,9 @@ export default function App() {
   // --- Dashboard del master -------------------------------------------------
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-bento-bg p-3 font-sans text-slate-100 sm:p-5 lg:p-8">
+    // `app-surface` marca il contenitore radice: i design che disegnano una
+    // texture sul fondo della pagina lo rendono trasparente per lasciarla vedere.
+    <div className="app-surface relative flex min-h-screen flex-col overflow-x-hidden bg-bento-bg p-3 font-sans text-slate-100 sm:p-5 lg:p-8">
       {/* Aura superiore. Prima era invisibile: `bg-gradient-radial` non è mai
           esistita come classe Tailwind e la regola non generava nulla. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[500px] bg-radial from-theme-600/10 to-transparent" />

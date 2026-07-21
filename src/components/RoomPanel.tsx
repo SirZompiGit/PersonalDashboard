@@ -109,6 +109,7 @@ export function RoomPanel({
             </span>
           )}
 
+
           <div className="ml-auto">
             {confirmingClose ? (
               <ConfirmInline

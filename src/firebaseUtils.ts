@@ -11,12 +11,17 @@
  */
 
 import {
+  endAt,
   get,
+  limitToFirst,
   onDisconnect,
   onValue,
+  orderByChild,
+  query,
   ref,
   remove,
   runTransaction,
+  serverTimestamp,
   set,
   update,
 } from 'firebase/database';
@@ -59,7 +64,13 @@ export async function createRoom(initialState: CampaignState): Promise<string> {
     const existing = await get(roomRef);
     if (existing.exists()) continue;
 
-    await set(roomRef, { campaign: clean(initialState), users: {} });
+    await set(roomRef, {
+      campaign: clean(initialState),
+      users: {},
+      // Segnale di vita: finché il master è collegato viene rinfrescato.
+      // È ciò che permette di riconoscere le stanze abbandonate.
+      lastSeen: serverTimestamp(),
+    });
     return pin;
   }
 
@@ -147,4 +158,52 @@ export async function pushParticipantRoll(pin: string, roll: RollResult): Promis
 
 export async function deleteRoom(pin: string): Promise<void> {
   await remove(ref(getDb(), `rooms/${pin}`));
+}
+
+/**
+ * Rinfresca il segnale di vita della stanza.
+ * Usa l'orologio del SERVER, non quello del browser: un client con la data
+ * sbagliata altrimenti terrebbe in vita una stanza per sempre, o la farebbe
+ * sparire subito.
+ */
+export async function touchRoom(pin: string): Promise<void> {
+  await update(ref(getDb(), `rooms/${pin}`), { lastSeen: serverTimestamp() });
+}
+
+/**
+ * Raccolta rifiuti delle stanze abbandonate.
+ *
+ * Firebase Realtime Database non ha una scadenza automatica, e senza un
+ * backend nessuno può cancellare una stanza il cui master ha semplicemente
+ * chiuso il browser. La soluzione è che siano i client stessi a fare pulizia:
+ * a ogni avvio si cercano le stanze il cui `lastSeen` è più vecchio della
+ * soglia e si eliminano.
+ *
+ * Le stanze senza `lastSeen` — create da versioni precedenti — ordinano prima
+ * di qualsiasi timestamp e vengono raccolte anche loro.
+ *
+ * @returns quante stanze sono state liberate.
+ */
+export async function sweepAbandonedRooms(maxAgeMs: number): Promise<number> {
+  const cutoff = Date.now() - maxAgeMs;
+
+  // `limitToFirst` tiene la lettura piccola: la pulizia è opportunistica, non
+  // deve mai diventare un costo per chi apre l'app.
+  const abandoned = query(
+    ref(getDb(), 'rooms'),
+    orderByChild('lastSeen'),
+    endAt(cutoff),
+    limitToFirst(25),
+  );
+
+  const snap = await get(abandoned);
+  if (!snap.exists()) return 0;
+
+  const removals: Promise<void>[] = [];
+  snap.forEach((child) => {
+    removals.push(remove(child.ref));
+  });
+
+  await Promise.all(removals);
+  return removals.length;
 }
