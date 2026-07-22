@@ -171,6 +171,11 @@ la scena): senza questo passaggio una foto da telefono esaurirebbe lo spazio del
 browser, impedendo il salvataggio della campagna, e andrebbe scaricata per intero
 da ogni giocatore.
 
+Il limite è **8 MB** dopo la riduzione, ma sopra i 2 MB compare un avviso: lo
+spazio del browser è di una decina di megabyte in tutto, campagna inclusa. I PNG
+mantengono il proprio formato per non perdere la trasparenza, ed è il motivo per
+cui a volte restano grandi — a parità di immagine un JPEG pesa molto meno.
+
 Nella vista condivisa ci sono anche **schermo intero** e **zoom**, utili quando lo schermo è un proiettore o una TV a qualche metro di distanza.
 
 ## Dati e sicurezza

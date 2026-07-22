@@ -75,6 +75,19 @@ describe('regole del Realtime Database', () => {
   });
 
   /**
+   * Se la regola fosse più stretta del limite dell'app, l'immagine si
+   * salverebbe in locale ma verrebbe respinta dal database: comparirebbe al
+   * master e a nessun altro.
+   */
+  it('lasciano passare le immagini fino al limite ammesso dall app', () => {
+    const media = parsed.rules.roomMedia.$pin;
+    for (const field of ['source', 'scene']) {
+      const limit = Number(media[field]['.validate'].match(/length <= (\d+)/)![1]);
+      expect(limit).toBeGreaterThanOrEqual(8 * 1024 * 1024);
+    }
+  });
+
+  /**
    * Il linguaggio delle regole ha un'API molto più piccola di quella dell'SDK.
    * `numChildren()` per esempio esiste sul DataSnapshot del client ma NON nelle
    * regole: usarlo fa fallire la pubblicazione con

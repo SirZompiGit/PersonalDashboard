@@ -1,5 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_MEDIA, normalizeMedia } from './useMedia';
+import {
+  DEFAULT_MEDIA,
+  LARGE_IMAGE_BYTES,
+  MAX_STORED_BYTES,
+  normalizeMedia,
+} from './useMedia';
+
+describe('limiti di dimensione', () => {
+  it('accetta immagini fino a 8 MB', () => {
+    expect(MAX_STORED_BYTES).toBe(8 * 1024 * 1024);
+  });
+
+  it('avvisa ben prima di rifiutare', () => {
+    expect(LARGE_IMAGE_BYTES).toBeLessThan(MAX_STORED_BYTES);
+  });
+
+  /**
+   * Il Realtime Database rifiuta le stringhe oltre i 10 MB: il limite
+   * dell'app deve restare sotto, altrimenti l'immagine si salva in locale ma
+   * non raggiunge mai i giocatori.
+   */
+  it('resta sotto il tetto del database', () => {
+    expect(MAX_STORED_BYTES).toBeLessThan(10 * 1024 * 1024);
+  });
+});
 
 /**
  * Queste impostazioni arrivano anche dal database, dove le scrive il master.

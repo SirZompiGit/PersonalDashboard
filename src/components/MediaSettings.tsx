@@ -11,7 +11,12 @@
 
 import { useRef, useState } from 'react';
 import { Image as ImageIcon, Link2, Projector, Trash2, Upload } from 'lucide-react';
-import { type MediaSettings as Settings, prepareImage, prepareScene } from '../hooks/useMedia';
+import {
+  LARGE_IMAGE_BYTES,
+  type MediaSettings as Settings,
+  prepareImage,
+  prepareScene,
+} from '../hooks/useMedia';
 
 interface MediaSettingsProps {
   media: Settings;
@@ -46,16 +51,29 @@ export function MediaSettings({
   const [sceneUrl, setSceneUrl] = useState('');
   const [busy, setBusy] = useState<'background' | 'scene' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const load = async (file: File, target: 'background' | 'scene') => {
     setBusy(target);
     setError(null);
+    setWarning(null);
     try {
       // L'immagine viene ridotta prima di essere conservata: una foto da
       // telefono esaurirebbe da sola lo spazio del browser, e in una stanza
       // andrebbe scaricata da ogni giocatore.
       const data =
         target === 'scene' ? await prepareScene(file) : await prepareImage(file);
+
+      // Sopra i 2 MB si passa lo stesso, ma vale la pena saperlo: lo spazio
+      // del browser è di una decina di megabyte in tutto, campagna compresa.
+      if (data.length > LARGE_IMAGE_BYTES) {
+        setWarning(
+          `Immagine pesante (${(data.length / 1024 / 1024).toFixed(1)} MB). Funziona, ma ` +
+            'occupa buona parte dello spazio del browser e in una stanza ogni giocatore ' +
+            'la scarica. Un JPEG al posto di un PNG pesa molto meno.',
+        );
+      }
+
       onChange(target === 'scene' ? { scene: data } : { source: data });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Immagine non caricata.');
@@ -282,6 +300,12 @@ export function MediaSettings({
       {(error || storageError) && (
         <p className="rounded-lg border border-red-500/30 bg-red-950/20 px-2 py-1.5 text-[10px] leading-snug text-red-300">
           {error ?? storageError}
+        </p>
+      )}
+
+      {warning && !error && (
+        <p className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-2 py-1.5 text-[10px] leading-snug text-amber-300">
+          {warning}
         </p>
       )}
     </div>

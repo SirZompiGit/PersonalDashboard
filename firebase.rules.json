@@ -99,8 +99,8 @@
       "$pin": {
         ".read": "$pin.matches(/^[0-9]{6}$/)",
         ".write": "$pin.matches(/^[0-9]{6}$/)",
-        "source": { ".validate": "newData.isString() && newData.val().length <= 4000000" },
-        "scene": { ".validate": "newData.isString() && newData.val().length <= 4000000" },
+        "source": { ".validate": "newData.isString() && newData.val().length <= 9000000" },
+        "scene": { ".validate": "newData.isString() && newData.val().length <= 9000000" },
         "repeat": { ".validate": "newData.isBoolean()" },
         "blur": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 40"

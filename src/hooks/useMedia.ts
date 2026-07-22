@@ -42,8 +42,21 @@ const MAX_DIMENSION = 1920;
 const MAX_SCENE_DIMENSION = 1280;
 const JPEG_QUALITY = 0.82;
 
-/** Oltre questa dimensione l'immagine viene rifiutata con un messaggio. */
-export const MAX_STORED_BYTES = 3 * 1024 * 1024;
+/**
+ * Oltre questa dimensione l'immagine viene rifiutata con un messaggio.
+ *
+ * Il limite morde di rado, perché le immagini vengono già ridimensionate e
+ * riesportate: a essere grandi restano soprattutto i PNG, che mantengono il
+ * proprio formato per non perdere la trasparenza.
+ */
+export const MAX_STORED_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Oltre questa soglia l'immagine passa, ma con un avviso: lo spazio del
+ * browser è dell'ordine dei 10 MB in tutto, campagna inclusa, e nelle stanze
+ * ogni giocatore collegato la scarica per intero.
+ */
+export const LARGE_IMAGE_BYTES = 2 * 1024 * 1024;
 
 export interface MediaSettings {
   /** Sfondo: URL remoto o immagine in base64. `null` = nessuno. */
