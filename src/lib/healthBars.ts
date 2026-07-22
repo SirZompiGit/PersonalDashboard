@@ -3,7 +3,7 @@
  * Prima `getBarColor` e il raggruppamento erano copiati identici nei due file.
  */
 
-import type { HealthBar } from '../types';
+import type { ColoredBar, HealthBar, Resource } from '../types';
 
 /**
  * Limite massimo dei punti ferita.
@@ -23,6 +23,17 @@ export const MIN_HP = 1;
 export const SEGMENT_THRESHOLD = 60;
 
 export const DEFAULT_ZERO_HP_TEXT = 'DEFUNTO';
+
+/**
+ * Risorse per barra.
+ *
+ * Il limite non è tecnico ma di leggibilità: la barra della vita deve restare
+ * l'informazione dominante, e tre tracce sottili sotto — o accanto, in verticale
+ * — la trasformerebbero in un grafico.
+ */
+export const MAX_RESOURCES = 2;
+
+export const DEFAULT_RESOURCE_COLOR = '#3b82f6';
 
 /** Soglia sotto la quale scatta l'allerta visiva, se attiva sulla barra. */
 export const LOW_HP_THRESHOLD = 0.25;
@@ -49,8 +60,27 @@ export function clampMaxHp(value: number): number {
   return Math.max(MIN_HP, Math.min(Math.round(value), MAX_HP));
 }
 
-export function healthRatio(bar: Pick<HealthBar, 'currentValue' | 'maxValue'>): number {
+export function healthRatio(bar: Pick<ColoredBar, 'currentValue' | 'maxValue'>): number {
   return bar.maxValue > 0 ? bar.currentValue / bar.maxValue : 0;
+}
+
+/**
+ * Applica i limiti alla lista delle risorse e restituisce `undefined` quando
+ * non ne resta nessuna.
+ *
+ * L'assenza è voluta: una barra senza risorse deve serializzarsi esattamente
+ * come prima che le risorse esistessero, così le stanze e i salvataggi già
+ * creati restano identici byte per byte.
+ */
+export function clampResources(list: Resource[] | undefined): Resource[] | undefined {
+  if (!Array.isArray(list) || list.length === 0) return undefined;
+
+  const clamped = list.slice(0, MAX_RESOURCES).map((resource) => {
+    const maxValue = clampMaxHp(resource.maxValue);
+    return { ...resource, maxValue, currentValue: clampHp(resource.currentValue, maxValue) };
+  });
+
+  return clamped.length > 0 ? clamped : undefined;
 }
 
 /** Espande #rgb in #rrggbb e restituisce le tre componenti. */
@@ -77,8 +107,13 @@ function mixHex(from: string, to: string, t: number): string {
   )}`;
 }
 
-/** Colore attivo della barra secondo la modalità e la percentuale di salute. */
-export function getBarColor(bar: HealthBar): string {
+/**
+ * Colore attivo della barra secondo la modalità e la percentuale di salute.
+ *
+ * Accetta `ColoredBar`, non `HealthBar`: le risorse hanno le stesse tre
+ * modalità di colore e passano di qui senza una riga in più.
+ */
+export function getBarColor(bar: ColoredBar): string {
   if (bar.colorMode === 'static') return bar.staticColor;
 
   const ratio = healthRatio(bar);

@@ -58,6 +58,9 @@ function mergeSignature(action: CampaignAction): string | null {
       return Object.keys(action.changes).length === 1 && 'currentValue' in action.changes
         ? `hp:${action.id}`
         : null;
+    case 'SET_RESOURCE_VALUE':
+      // Anche le risorse si trascinano: un gesto, una voce di cronologia.
+      return `res:${action.barId}:${action.resourceId}`;
     default:
       return null;
   }

@@ -116,3 +116,110 @@ describe('azioni senza effetto', () => {
     expect(campaignReducer(state, { type: 'ADD_GROUP', group: 'Nemici' })).toBe(state);
   });
 });
+
+describe('risorse delle barre', () => {
+  /** Barra con due risorse, come la creerebbe il form. */
+  const withResources = () => {
+    const state = campaignReducer(seed(), {
+      type: 'ADD_HEALTH_BAR',
+      bar: {
+        name: 'Arcimago',
+        maxValue: 60,
+        currentValue: 60,
+        colorMode: 'static',
+        staticColor: '#10b981',
+        gradientColors: { low: '#ef4444', mid: '#f59e0b', high: '#10b981' },
+        resources: [
+          {
+            id: 'mana',
+            name: 'Mana',
+            maxValue: 40,
+            currentValue: 40,
+            colorMode: 'static',
+            staticColor: '#3b82f6',
+            gradientColors: { low: '#ef4444', mid: '#f59e0b', high: '#10b981' },
+            shared: true,
+          },
+          {
+            id: 'frenesia',
+            name: 'Frenesia',
+            maxValue: 6,
+            currentValue: 0,
+            colorMode: 'static',
+            staticColor: '#a855f7',
+            gradientColors: { low: '#ef4444', mid: '#f59e0b', high: '#10b981' },
+            shared: false,
+          },
+        ],
+      },
+    });
+
+    return { state, bar: state.healthBars.at(-1)! };
+  };
+
+  it('le conserva alla creazione', () => {
+    const { bar } = withResources();
+    expect(bar.resources?.map((r) => r.name)).toEqual(['Mana', 'Frenesia']);
+  });
+
+  it('cambia solo la risorsa indicata', () => {
+    const { state, bar } = withResources();
+    const next = campaignReducer(state, {
+      type: 'SET_RESOURCE_VALUE',
+      barId: bar.id,
+      resourceId: 'mana',
+      value: 12,
+    });
+
+    const updated = next.healthBars.find((b) => b.id === bar.id)!;
+    expect(updated.resources?.[0].currentValue).toBe(12);
+    expect(updated.resources?.[1].currentValue).toBe(0);
+    // Gli HP non si toccano: sono un'altra barra.
+    expect(updated.currentValue).toBe(60);
+  });
+
+  it('applica il massimo della risorsa, non quello della barra', () => {
+    const { state, bar } = withResources();
+    const next = campaignReducer(state, {
+      type: 'SET_RESOURCE_VALUE',
+      barId: bar.id,
+      resourceId: 'frenesia',
+      value: 50,
+    });
+
+    expect(next.healthBars.find((b) => b.id === bar.id)!.resources?.[1].currentValue).toBe(6);
+  });
+
+  it('non registra nulla quando il valore non cambia', () => {
+    const { state, bar } = withResources();
+
+    for (const action of [
+      { resourceId: 'mana', value: 40 },
+      { resourceId: 'inesistente', value: 3 },
+    ]) {
+      expect(
+        campaignReducer(state, { type: 'SET_RESOURCE_VALUE', barId: bar.id, ...action }),
+      ).toBe(state);
+    }
+
+    expect(
+      campaignReducer(state, {
+        type: 'SET_RESOURCE_VALUE',
+        barId: 'barra-inesistente',
+        resourceId: 'mana',
+        value: 3,
+      }),
+    ).toBe(state);
+  });
+
+  it('svuotando la lista toglie la chiave, invece di lasciarla indefinita', () => {
+    const { state, bar } = withResources();
+    const next = campaignReducer(state, {
+      type: 'UPDATE_HEALTH_BAR',
+      id: bar.id,
+      changes: { resources: undefined },
+    });
+
+    expect(next.healthBars.find((b) => b.id === bar.id)!).not.toHaveProperty('resources');
+  });
+});

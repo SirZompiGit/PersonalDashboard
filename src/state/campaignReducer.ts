@@ -15,7 +15,7 @@ import type { CampaignState, HealthBar, Player, RollResult } from '../types';
 import type { CampaignStyle, CampaignTheme, LogoVariant } from '../theme';
 import { MAX_ROLL_HISTORY, normalizeCampaign } from './migrations';
 import { createEmptyCampaign } from './defaults';
-import { clampHp, clampMaxHp } from '../lib/healthBars';
+import { clampHp, clampMaxHp, clampResources } from '../lib/healthBars';
 import { newId } from '../lib/ids';
 
 export type CampaignAction =
@@ -48,6 +48,12 @@ export type CampaignAction =
   | { type: 'ADD_HEALTH_BAR'; bar: Omit<HealthBar, 'id'> }
   | { type: 'INSERT_HEALTH_BAR'; bar: HealthBar; index: number }
   | { type: 'UPDATE_HEALTH_BAR'; id: string; changes: Partial<Omit<HealthBar, 'id'>> }
+  /**
+   * Valore di una singola risorsa. Azione a sé invece di un `UPDATE_HEALTH_BAR`
+   * con l'intera lista: il trascinamento ne genera decine al secondo e la
+   * cronologia deve poterle riconoscere per fonderle in un solo annullamento.
+   */
+  | { type: 'SET_RESOURCE_VALUE'; barId: string; resourceId: string; value: number }
   | { type: 'DELETE_HEALTH_BAR'; id: string };
 
 function insertAt<T>(list: T[], item: T, index: number): T[] {
@@ -56,11 +62,29 @@ function insertAt<T>(list: T[], item: T, index: number): T[] {
   return out;
 }
 
-/** Applica i limiti coerentemente: gli HP correnti non superano mai il massimo. */
+/**
+ * Applica i limiti coerentemente: gli HP correnti non superano mai il massimo,
+ * e lo stesso vale per ogni risorsa.
+ *
+ * Quando non resta nessuna risorsa la chiave viene tolta del tutto, non
+ * lasciata a `undefined`: è ciò che permette di svuotare la lista dal form, e
+ * mantiene identico il payload delle barre che non ne hanno.
+ */
 function applyBarChanges(bar: HealthBar, changes: Partial<Omit<HealthBar, 'id'>>): HealthBar {
   const merged = { ...bar, ...changes };
   const maxValue = clampMaxHp(merged.maxValue);
-  return { ...merged, maxValue, currentValue: clampHp(merged.currentValue, maxValue) };
+  const resources = clampResources(merged.resources);
+
+  const next: HealthBar = {
+    ...merged,
+    maxValue,
+    currentValue: clampHp(merged.currentValue, maxValue),
+  };
+
+  if (resources) next.resources = resources;
+  else delete next.resources;
+
+  return next;
 }
 
 export function campaignReducer(state: CampaignState, action: CampaignAction): CampaignState {
@@ -228,12 +252,17 @@ export function campaignReducer(state: CampaignState, action: CampaignAction): C
 
     case 'ADD_HEALTH_BAR': {
       const maxValue = clampMaxHp(action.bar.maxValue);
+      const resources = clampResources(action.bar.resources);
       const bar: HealthBar = {
         ...action.bar,
         id: newId(),
         maxValue,
         currentValue: clampHp(action.bar.currentValue, maxValue),
       };
+
+      if (resources) bar.resources = resources;
+      else delete bar.resources;
+
       return { ...state, healthBars: [...state.healthBars, bar] };
     }
 
@@ -247,6 +276,32 @@ export function campaignReducer(state: CampaignState, action: CampaignAction): C
           bar.id === action.id ? applyBarChanges(bar, action.changes) : bar,
         ),
       };
+
+    case 'SET_RESOURCE_VALUE': {
+      // Restituire lo stesso oggetto quando nulla cambia non è un'ottimizzazione:
+      // è ciò su cui la cronologia si basa per non registrare una voce inutile
+      // a ogni movimento del puntatore che non sposta il valore.
+      let touched = false;
+
+      const healthBars = state.healthBars.map((bar) => {
+        if (bar.id !== action.barId || !bar.resources) return bar;
+
+        let barTouched = false;
+        const resources = bar.resources.map((resource) => {
+          if (resource.id !== action.resourceId) return resource;
+          const currentValue = clampHp(action.value, resource.maxValue);
+          if (currentValue === resource.currentValue) return resource;
+          barTouched = true;
+          return { ...resource, currentValue };
+        });
+
+        if (!barTouched) return bar;
+        touched = true;
+        return { ...bar, resources };
+      });
+
+      return touched ? { ...state, healthBars } : state;
+    }
 
     case 'DELETE_HEALTH_BAR':
       return { ...state, healthBars: state.healthBars.filter((bar) => bar.id !== action.id) };

@@ -1,5 +1,5 @@
 /**
- * Singola barra della vita.
+ * Singola barra della vita, con le sue risorse.
  *
  * Interventi principali:
  *  - Pointer Events al posto di mousedown/mousemove/mouseup. Un solo percorso
@@ -17,14 +17,18 @@
  *  - I controlli ±HP restano nascosti col mouse ma sono sempre visibili dove
  *    l'hover non esiste: prima erano invisibili e inutilizzabili su touch.
  *  - La barra è un vero `slider` accessibile, governabile da tastiera.
+ *  - Il disegno e il trascinamento vivono in `BarTrack`, condiviso fra la barra
+ *    della vita e le sue risorse: mana, scudo, frenesia si trascinano con lo
+ *    stesso gesto, senza duplicare la logica del puntatore.
  */
 
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
-import type { HealthBar } from '../types';
+import type { HealthBar, Resource } from '../types';
 import { Edit2, ShieldAlert, Trash2 } from 'lucide-react';
 import {
   DEFAULT_ZERO_HP_TEXT,
   SEGMENT_THRESHOLD,
+  getBarColor,
   healthRatio,
   isLowHp,
 } from '../lib/healthBars';
@@ -44,8 +48,11 @@ interface Particle {
 
 interface HealthBarItemProps {
   bar: HealthBar;
-  getBarColor: (bar: HealthBar) => string;
   onChangeValue: (bar: HealthBar, value: number) => void;
+  /** Assente = risorse in sola lettura. */
+  onChangeResource?: (bar: HealthBar, resource: Resource, value: number) => void;
+  /** Nasconde le risorse che il master non condivide con i giocatori. */
+  onlySharedResources?: boolean;
   onEdit?: (bar: HealthBar) => void;
   onDelete?: (bar: HealthBar) => void;
   readOnly?: boolean;
@@ -60,21 +67,223 @@ const SOUND_THROTTLE = 70;
 const PARTICLE_MERGE_WINDOW = 450;
 
 /**
- * Dimensioni della barra verticale.
+ * Dimensioni della barra verticale, per numero di risorse mostrate.
  *
  * Prima erano `h-full max-h-[300px] min-h-[160px]`, ma il contenitore che la
  * ospita non ha altezza definita: `height: 100%` si risolveva in `auto` e sia
  * `h-full` sia `max-h` erano inerti. Ogni barra era alta esattamente 160px su
  * qualunque schermo — sprecando spazio sul proiettore e occupandone troppo sul
  * telefono. Ora l'altezza è esplicita e cresce con il breakpoint.
+ *
+ * Le larghezze sono scritte per esteso invece che calcolate: Tailwind estrae le
+ * classi dal testo sorgente, quindi una stringa composta a runtime non
+ * genererebbe alcun CSS.
  */
-const VERTICAL_SIZE =
-  'h-[150px] w-[50px] sm:h-[190px] sm:w-[54px] lg:h-[230px] lg:w-[58px] xl:h-[270px]';
+const VERTICAL_SIZE = [
+  'h-[150px] w-[50px] sm:h-[190px] sm:w-[54px] lg:h-[230px] lg:w-[58px] xl:h-[270px]',
+  'h-[150px] w-[70px] sm:h-[190px] sm:w-[74px] lg:h-[230px] lg:w-[78px] xl:h-[270px]',
+  'h-[150px] w-[90px] sm:h-[190px] sm:w-[94px] lg:h-[230px] lg:w-[98px] xl:h-[270px]',
+];
+
+/** Colonna che contiene le tracce, larga quanto basta per le risorse presenti. */
+const VERTICAL_COLUMN = ['w-[24px] sm:w-[26px]', 'w-[44px] sm:w-[46px]', 'w-[64px] sm:w-[66px]'];
+
+interface BarTrackProps {
+  value: number;
+  max: number;
+  color: string;
+  vertical: boolean;
+  /** Traccia di una risorsa: molto più sottile di quella della vita. */
+  thin?: boolean;
+  readOnly?: boolean;
+  onChange?: (value: number) => void;
+  label: string;
+  /** Pulsazione dell'allerta sotto soglia. Solo per la barra della vita. */
+  alert?: boolean;
+  /** Dimensioni del contenitore sensibile: le decide il chiamante. */
+  className?: string;
+  /** Classi aggiuntive sulla traccia, per il lampeggio di danno e cura. */
+  trackClassName?: string;
+}
+
+/**
+ * Traccia interattiva, unica per barre della vita e risorse.
+ *
+ * Il contenitore sensibile è più grande della traccia visibile: una risorsa è
+ * alta dieci pixel, e senza quel margine sarebbe impossibile da colpire con un
+ * dito. La spaziatura sta sull'asse che *non* viene misurato — verticale per le
+ * barre orizzontali e viceversa — così ingrandisce l'area del gesto senza
+ * falsare la conversione fra posizione e valore.
+ */
+function BarTrack({
+  value,
+  max,
+  color,
+  vertical,
+  thin = false,
+  readOnly = false,
+  onChange,
+  label,
+  alert = false,
+  className = '',
+  trackClassName = '',
+}: BarTrackProps) {
+  const hitRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
+
+  const interactive = !readOnly && Boolean(onChange);
+  const percentage = max > 0 ? (value / max) * 100 : 0;
+  const useSegments = max <= SEGMENT_THRESHOLD;
+
+  const commit = (next: number) => {
+    if (!onChange) return;
+    const clamped = Math.max(0, Math.min(max, next));
+    if (clamped !== value) onChange(clamped);
+  };
+
+  const valueFromPointer = (event: ReactPointerEvent<HTMLDivElement>): number => {
+    const hit = hitRef.current;
+    if (!hit) return value;
+
+    const rect = hit.getBoundingClientRect();
+    const ratio = vertical
+      ? 1 - (event.clientY - rect.top) / rect.height
+      : (event.clientX - rect.left) / rect.width;
+
+    const clamped = Math.max(0, Math.min(1, ratio));
+    // `ceil` fa sì che toccare un segmento imposti proprio quel segmento.
+    return clamped <= 0 ? 0 : Math.ceil(clamped * max);
+  };
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!interactive || event.button !== 0) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    draggingRef.current = true;
+    playClickSound();
+    commit(valueFromPointer(event));
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    commit(valueFromPointer(event));
+  };
+
+  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!draggingRef.current) return;
+    draggingRef.current = false;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  /** Alternativa da tastiera al trascinamento. */
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!interactive) return;
+    const step = event.shiftKey ? 5 : 1;
+    const actions: Record<string, number> = {
+      ArrowRight: value + step,
+      ArrowUp: value + step,
+      ArrowLeft: value - step,
+      ArrowDown: value - step,
+      Home: 0,
+      End: max,
+    };
+    const next = actions[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    commit(next);
+  };
+
+  const hitPadding = thin ? (vertical ? 'px-1' : 'py-1') : '';
+  const trackSize = vertical ? 'h-full w-full' : thin ? 'h-2.5 w-full' : 'h-8 w-full';
+  const trackRounding = thin ? 'rounded-md' : 'rounded-lg';
+  const trackPadding = thin ? 'p-px' : 'p-[3px]';
+  const segmentGap = thin ? 'gap-px' : max > 30 ? 'gap-[1px]' : 'gap-[2px]';
+
+  return (
+    <div
+      ref={hitRef}
+      role={interactive ? 'slider' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      aria-label={interactive ? label : undefined}
+      aria-valuemin={interactive ? 0 : undefined}
+      aria-valuemax={interactive ? max : undefined}
+      aria-valuenow={interactive ? value : undefined}
+      aria-valuetext={interactive ? `${value} di ${max}` : undefined}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+      onKeyDown={handleKeyDown}
+      title={thin ? `${label}: ${value}/${max}` : undefined}
+      className={`relative ${hitPadding} ${
+        interactive ? 'cursor-pointer touch-none' : ''
+      } ${className}`}
+    >
+      <div
+        // Il colore attivo viaggia come variabile CSS: l'animazione di allerta ha
+        // così accesso al colore reale della barra, che cambia a runtime.
+        style={{ '--hp-color': color } as React.CSSProperties}
+        // `hp-track` è l'aggancio con cui ogni design ridefinisce l'aspetto della
+        // barra. I colori sono token, non più esadecimali scritti a mano: era
+        // l'ultimo punto che ignorava il design scelto.
+        className={`hp-track relative z-10 flex overflow-hidden border border-bento-border bg-bento-item select-none transition-shadow duration-200 ${trackRounding} ${trackPadding} ${trackSize} ${segmentGap} ${
+          vertical ? 'flex-col-reverse' : 'flex-row'
+        } ${alert ? 'is-alert' : ''} ${trackClassName}`}
+      >
+        {useSegments ? (
+          Array.from({ length: max }, (_, index) => {
+            const active = index < value;
+            return (
+              <div
+                key={index}
+                className={`hp-segment flex-grow rounded-sm transition-all duration-200 ${
+                  vertical ? 'w-full' : 'h-full'
+                }`}
+                style={{
+                  backgroundColor: color,
+                  opacity: active ? 1 : 0.08,
+                  boxShadow: active ? `0 0 15px ${color}70` : 'none',
+                  transform: active ? 'scale(1)' : 'scale(0.98)',
+                }}
+              />
+            );
+          })
+        ) : (
+          // Riempimento continuo: sopra i 60 punti i segmenti erano già disegnati
+          // con `gap-0` e apparivano comunque come una barra piena.
+          // Fondo spento e riempimento sono elementi separati: annidandoli,
+          // l'opacità del fondo si moltiplicherebbe a quella del riempimento.
+          <div
+            className={`relative flex-1 overflow-hidden rounded-sm ${vertical ? 'w-full' : 'h-full'}`}
+          >
+            <div
+              className="absolute inset-0 rounded-sm"
+              style={{ backgroundColor: color, opacity: 0.08 }}
+            />
+            <div
+              className="hp-segment absolute inset-0 rounded-sm transition-transform duration-200"
+              style={{
+                backgroundColor: color,
+                boxShadow: `0 0 15px ${color}70`,
+                transform: vertical
+                  ? `scaleY(${percentage / 100})`
+                  : `scaleX(${percentage / 100})`,
+                transformOrigin: vertical ? 'bottom' : 'left',
+              }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function HealthBarItem({
   bar,
-  getBarColor,
   onChangeValue,
+  onChangeResource,
+  onlySharedResources = false,
   onEdit,
   onDelete,
   readOnly = false,
@@ -84,8 +293,6 @@ export function HealthBarItem({
   const [flash, setFlash] = useState<'damage' | 'heal' | null>(null);
   const [shaking, setShaking] = useState(false);
 
-  const trackRef = useRef<HTMLDivElement>(null);
-  const draggingRef = useRef(false);
   const prevValueRef = useRef(bar.currentValue);
   const lastSoundRef = useRef(0);
   const particleSeqRef = useRef(0);
@@ -110,6 +317,7 @@ export function HealthBarItem({
   );
 
   // Reazioni al cambio di HP: suono, lampeggio, scossa, particella.
+  // Solo la barra della vita: le risorse cambiano spesso e in silenzio.
   useEffect(() => {
     const previous = prevValueRef.current;
     if (bar.currentValue === previous) return;
@@ -162,66 +370,13 @@ export function HealthBarItem({
   const isVertical = layout === 'vertical';
   const percentage = healthRatio(bar) * 100;
   const activeColor = getBarColor(bar);
-  const useSegments = bar.maxValue <= SEGMENT_THRESHOLD;
   const inAlert = isLowHp(bar);
 
-  /** Converte la posizione del puntatore in punti ferita. */
-  const valueFromPointer = (event: ReactPointerEvent<HTMLDivElement>): number => {
-    const track = trackRef.current;
-    if (!track) return bar.currentValue;
-
-    const rect = track.getBoundingClientRect();
-    const ratio = isVertical
-      ? 1 - (event.clientY - rect.top) / rect.height
-      : (event.clientX - rect.left) / rect.width;
-
-    const clamped = Math.max(0, Math.min(1, ratio));
-    // `ceil` fa sì che toccare un segmento imposti proprio quel segmento.
-    return clamped <= 0 ? 0 : Math.ceil(clamped * bar.maxValue);
-  };
-
-  const commit = (value: number) => {
-    if (value !== bar.currentValue) onChangeValue(bar, value);
-  };
-
-  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (readOnly || event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    draggingRef.current = true;
-    playClickSound();
-    commit(valueFromPointer(event));
-  };
-
-  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return;
-    commit(valueFromPointer(event));
-  };
-
-  const endDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!draggingRef.current) return;
-    draggingRef.current = false;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  };
-
-  /** Alternativa da tastiera al trascinamento. */
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (readOnly) return;
-    const step = event.shiftKey ? 5 : 1;
-    const actions: Record<string, number> = {
-      ArrowRight: bar.currentValue + step,
-      ArrowUp: bar.currentValue + step,
-      ArrowLeft: bar.currentValue - step,
-      ArrowDown: bar.currentValue - step,
-      Home: 0,
-      End: bar.maxValue,
-    };
-    const next = actions[event.key];
-    if (next === undefined) return;
-    event.preventDefault();
-    commit(Math.max(0, Math.min(bar.maxValue, next)));
-  };
+  // Nella vista condivisa il master vede esattamente ciò che vedono i giocatori:
+  // le risorse tenute private spariscono anche dalla sua anteprima.
+  const resources = (bar.resources ?? []).filter(
+    (resource) => !onlySharedResources || resource.shared,
+  );
 
   const flashRing =
     flash === 'damage'
@@ -230,77 +385,36 @@ export function HealthBarItem({
         ? 'ring-2 ring-[#00ff88]/30 shadow-[inset_0_0_10px_rgba(0,255,136,0.2)]'
         : '';
 
-  const track = (
-    <div
-      ref={trackRef}
-      role={readOnly ? undefined : 'slider'}
-      tabIndex={readOnly ? undefined : 0}
-      aria-label={readOnly ? undefined : `Punti ferita di ${bar.name}`}
-      aria-valuemin={readOnly ? undefined : 0}
-      aria-valuemax={readOnly ? undefined : bar.maxValue}
-      aria-valuenow={readOnly ? undefined : bar.currentValue}
-      aria-valuetext={readOnly ? undefined : `${bar.currentValue} di ${bar.maxValue} punti ferita`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
-      onKeyDown={handleKeyDown}
-      // Il colore attivo viaggia come variabile CSS: l'animazione di allerta ha
-      // così accesso al colore reale della barra, che cambia a runtime.
-      style={{ '--hp-color': activeColor } as React.CSSProperties}
-      // `hp-track` è l'aggancio con cui ogni design ridefinisce l'aspetto della
-      // barra. I colori sono token, non più esadecimali scritti a mano: era
-      // l'ultimo punto che ignorava il design scelto.
-      className={`hp-track relative z-10 flex overflow-hidden rounded-lg border border-bento-border bg-bento-item p-[3px] select-none transition-shadow duration-200 ${
-        inAlert ? 'is-alert' : ''
-      } ${isVertical ? 'h-full w-full flex-col-reverse' : 'h-8 w-full'} ${
-        bar.maxValue > 30 ? 'gap-[1px]' : 'gap-[2px]'
-      } ${readOnly ? '' : 'cursor-pointer touch-none'} ${flashRing}`}
-    >
-      {useSegments ? (
-        Array.from({ length: bar.maxValue }, (_, index) => {
-          const active = index < bar.currentValue;
-          return (
-            <div
-              key={index}
-              className={`hp-segment flex-grow rounded-sm transition-all duration-200 ${
-                isVertical ? 'w-full' : 'h-full'
-              }`}
-              style={{
-                backgroundColor: activeColor,
-                opacity: active ? 1 : 0.08,
-                boxShadow: active ? `0 0 15px ${activeColor}70` : 'none',
-                transform: active ? 'scale(1)' : 'scale(0.98)',
-              }}
-            />
-          );
-        })
-      ) : (
-        // Riempimento continuo: sopra i 60 punti i segmenti erano già disegnati
-        // con `gap-0` e apparivano comunque come una barra piena.
-        // Fondo spento e riempimento sono elementi separati: annidandoli,
-        // l'opacità del fondo si moltiplicherebbe a quella del riempimento.
-        <div
-          className={`relative flex-1 overflow-hidden rounded-sm ${isVertical ? 'w-full' : 'h-full'}`}
-        >
-          <div
-            className="absolute inset-0 rounded-sm"
-            style={{ backgroundColor: activeColor, opacity: 0.08 }}
-          />
-          <div
-            className="hp-segment absolute inset-0 rounded-sm transition-transform duration-200"
-            style={{
-              backgroundColor: activeColor,
-              boxShadow: `0 0 15px ${activeColor}70`,
-              transform: isVertical
-                ? `scaleY(${percentage / 100})`
-                : `scaleX(${percentage / 100})`,
-              transformOrigin: isVertical ? 'bottom' : 'left',
-            }}
-          />
-        </div>
-      )}
-    </div>
+  const mainTrack = (
+    <BarTrack
+      value={bar.currentValue}
+      max={bar.maxValue}
+      color={activeColor}
+      vertical={isVertical}
+      readOnly={readOnly}
+      onChange={(value) => onChangeValue(bar, value)}
+      label={`Punti ferita di ${bar.name}`}
+      alert={inAlert}
+      className={isVertical ? 'min-w-0 flex-1' : 'w-full'}
+      trackClassName={flashRing}
+    />
+  );
+
+  const resourceTrack = (resource: Resource, className: string) => (
+    <BarTrack
+      key={resource.id}
+      value={resource.currentValue}
+      max={resource.maxValue}
+      color={getBarColor(resource)}
+      vertical={isVertical}
+      thin
+      readOnly={readOnly || !onChangeResource}
+      onChange={
+        onChangeResource ? (value) => onChangeResource(bar, resource, value) : undefined
+      }
+      label={`${resource.name} di ${bar.name}`}
+      className={className}
+    />
   );
 
   const particleNodes = particles.map((particle) => (
@@ -323,7 +437,7 @@ export function HealthBarItem({
   if (isVertical) {
     return (
       <div
-        className={`relative flex ${VERTICAL_SIZE} shrink-0 flex-row items-stretch gap-1 rounded-xl border border-bento-border bg-bento-bg p-1.5 transition-colors duration-200 ${
+        className={`relative flex ${VERTICAL_SIZE[resources.length]} shrink-0 flex-row items-stretch gap-1 rounded-xl border border-bento-border bg-bento-bg p-1.5 transition-colors duration-200 ${
           readOnly ? '' : 'hover:border-slate-600'
         } ${shaking ? 'health-shake' : ''}`}
       >
@@ -339,9 +453,15 @@ export function HealthBarItem({
           </span>
         </div>
 
-        <div className="flex w-[24px] shrink-0 flex-col items-center sm:w-[26px]">
-          <div className="relative flex min-h-0 w-full flex-1 justify-center">
-            {track}
+        <div
+          className={`flex ${VERTICAL_COLUMN[resources.length]} shrink-0 flex-col items-center`}
+        >
+          {/* Le risorse affiancano la barra della vita: in verticale non c'è
+              spazio per un'etichetta, quindi nome e valore stanno nel `title`
+              e nell'etichetta accessibile della traccia. */}
+          <div className="relative flex min-h-0 w-full flex-1 justify-center gap-[2px]">
+            {mainTrack}
+            {resources.map((resource) => resourceTrack(resource, 'w-[18px] shrink-0'))}
             {particleNodes}
           </div>
 
@@ -394,7 +514,10 @@ export function HealthBarItem({
                   aria-label={label}
                   onClick={() => {
                     playClickSound();
-                    commit(Math.max(0, Math.min(bar.maxValue, bar.currentValue + delta)));
+                    onChangeValue(
+                      bar,
+                      Math.max(0, Math.min(bar.maxValue, bar.currentValue + delta)),
+                    );
                   }}
                   className={`rounded-lg px-1.5 py-1 font-mono text-xs font-bold text-slate-400 transition-colors duration-200 hover:bg-bento-button ${tone}`}
                 >
@@ -444,9 +567,32 @@ export function HealthBarItem({
       </div>
 
       <div className="relative">
-        {track}
+        {mainTrack}
         {particleNodes}
       </div>
+
+      {resources.length > 0 && (
+        <div className="mt-1.5 space-y-0.5">
+          {resources.map((resource) => (
+            <div key={resource.id} className="flex items-center gap-2">
+              <span
+                className="w-14 shrink-0 truncate font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:w-20"
+                title={resource.name}
+              >
+                {resource.name}
+              </span>
+
+              {resourceTrack(resource, 'min-w-0 flex-1')}
+
+              <span className="shrink-0 font-mono text-[10px] tabular-nums text-slate-500">
+                <span className="font-bold text-slate-300">{resource.currentValue}</span>
+                <span className="mx-px text-slate-600">/</span>
+                {resource.maxValue}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

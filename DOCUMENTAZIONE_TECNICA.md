@@ -141,7 +141,22 @@ d3, d4, d6, d8, d10, d12, d20. `lib/dice.ts` centralizza tutto: `parseSides`, `r
 
 ## 5. Barre della vita
 
-Ogni barra ha nome, HP attuali e massimi, modalità colore (statico o gradiente a tre livelli), gruppo opzionale e testo personalizzato a 0 HP.
+Ogni barra ha nome, HP attuali e massimi, modalità colore (statico, a tre livelli o sfumato), gruppo opzionale, testo personalizzato a 0 HP e allerta sotto il 25%.
+
+### Risorse
+
+Una barra può portare **fino a due risorse**: mana, scudo, frenesia, slot incantesimo. Sono barre più sottili con nome, valori e modalità colore propri, agganciate a quella della vita.
+
+| Aspetto | Come funziona |
+|---|---|
+| Modello | `resources?: Resource[]` su `HealthBar`. Campo **additivo**, e **assente** quando la lista è vuota: una barra senza risorse si serializza identica a prima che le risorse esistessero, quindi le stanze e i salvataggi già creati non cambiano |
+| Colore | `Resource` e `HealthBar` condividono `ColoredBar`, l'unico argomento di `getBarColor`: le risorse hanno le stesse tre modalità senza una riga di codice in più |
+| Interazione | Stesso gesto della barra della vita. Il contenitore sensibile è più alto della traccia visibile — la spaziatura sta sull'asse che *non* viene misurato, così allarga l'area del dito senza falsare la conversione fra posizione e valore |
+| Visibilità | Interruttore per singola risorsa: lo scudo di un mostro può essere pubblico e la sua frenesia no. Nella vista condivisa il master vede esattamente ciò che vedono i giocatori |
+| Cronologia | `SET_RESOURCE_VALUE` ha una firma di fusione propria: un trascinamento intero occupa una sola voce di annullamento |
+| Layout verticale | Le risorse affiancano la barra come colonnine da 10px e la scheda si allarga di 20px ciascuna; nome e valore stanno nel suggerimento, perché a quella larghezza un'etichetta non è leggibile |
+
+Il limite di due non è tecnico ma di leggibilità: la barra della vita deve restare l'informazione dominante.
 
 **Interazione** — Pointer Events con `setPointerCapture`: un solo percorso di codice per mouse, dito e penna. Si può toccare un punto della barra, trascinare, usare i pulsanti ±1/±5, oppure le frecce da tastiera (`Shift` per passi da 5). La barra è un `role="slider"` con i relativi attributi ARIA.
 
@@ -156,6 +171,8 @@ Ogni barra ha nome, HP attuali e massimi, modalità colore (statico o gradiente 
 Componente isolato, apribile in tre modi: anteprima nella stessa pagina, finestra separata (`?shared=true`) per il secondo monitor, o vista dei giocatori collegati (`?shared=true&room=PIN`).
 
 Mostra: ordine di turno con inventario e bonus del giocatore attivo, stato della salute (orizzontale o verticale, la scelta si ricorda), ultimo lancio del master, lanci dei giocatori, appunti campagna, appunti personali del giocatore e programmazione della sessione.
+
+I gruppi di barre si possono **chiudere** anche qui, come nella dashboard. Lo stato usa una chiave distinta (`fantasia_shared_collapsed_groups`) apposta: è una preferenza di *chi guarda*, non della campagna, quindi il master che chiude un gruppo per sé non lo chiude a tutti i giocatori.
 
 ### Comportamento responsive
 

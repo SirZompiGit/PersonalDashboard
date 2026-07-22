@@ -8,7 +8,7 @@
 
 ---
 
-Partecipanti e ordine di turno, lancio dei dadi con etichette, barre della vita interattive, schede giocatore, appunti privati e pubblici, e uno schermo condiviso da proiettare ai giocatori.
+Partecipanti e ordine di turno, lancio dei dadi con etichette, barre della vita interattive con le loro risorse, schede giocatore, appunti privati e pubblici, e uno schermo condiviso da proiettare ai giocatori.
 
 Funziona in due modalità:
 
@@ -40,7 +40,7 @@ Altri comandi:
 
 ```bash
 npm run lint       # controllo dei tipi (TypeScript strict)
-npm test           # 106 verifiche automatiche
+npm test           # 141 verifiche automatiche
 npm run test:watch # le stesse, rieseguite a ogni salvataggio
 npm run build      # build di produzione in dist/
 npm run preview    # anteprima della build

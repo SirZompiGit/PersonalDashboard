@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { HealthBar } from '../types';
-import { clampMaxHp, getBarColor, groupBars, healthRatio, isLowHp } from './healthBars';
+import type { HealthBar, Resource } from '../types';
+import {
+  MAX_RESOURCES,
+  clampMaxHp,
+  clampResources,
+  getBarColor,
+  groupBars,
+  healthRatio,
+  isLowHp,
+} from './healthBars';
 
 const bar = (over: Partial<HealthBar> = {}): HealthBar => ({
   id: 'x',
@@ -103,6 +111,61 @@ describe('isLowHp', () => {
     // Assente significa attivo: le barre create prima devono comportarsi
     // come quelle nuove.
     expect(isLowHp({ ...low, lowHpAlert: undefined })).toBe(true);
+  });
+});
+
+const resource = (over: Partial<Resource> = {}): Resource => ({
+  id: 'r',
+  name: 'Mana',
+  maxValue: 50,
+  currentValue: 25,
+  colorMode: 'static',
+  staticColor: '#3b82f6',
+  gradientColors: { low: '#ff0000', mid: '#00ff00', high: '#0000ff' },
+  shared: true,
+  ...over,
+});
+
+/**
+ * Le risorse hanno le stesse tre modalità di colore della barra della vita, e
+ * ci passano attraverso la stessa funzione: se un giorno smettesse di accettare
+ * la loro forma, mana e scudo diventerebbero grigi in silenzio.
+ */
+describe('getBarColor sulle risorse', () => {
+  it('vale anche per una risorsa, che non è una HealthBar', () => {
+    expect(getBarColor(resource({ colorMode: 'static' }))).toBe('#3b82f6');
+    expect(getBarColor(resource({ colorMode: 'gradient', currentValue: 5 }))).toBe('#ff0000');
+    expect(getBarColor(resource({ colorMode: 'smooth', currentValue: 50 }))).toBe('#0000ff');
+  });
+});
+
+describe('clampResources', () => {
+  it('non ne accetta più di due', () => {
+    const list = clampResources([
+      resource({ id: 'a' }),
+      resource({ id: 'b' }),
+      resource({ id: 'c' }),
+    ]);
+    expect(list).toHaveLength(MAX_RESOURCES);
+    expect(list?.map((r) => r.id)).toEqual(['a', 'b']);
+  });
+
+  it('riporta i valori entro i limiti della risorsa', () => {
+    const [only] = clampResources([resource({ currentValue: 999, maxValue: 30 })]) ?? [];
+    expect(only.currentValue).toBe(30);
+
+    const [huge] = clampResources([resource({ maxValue: 100000 })]) ?? [];
+    expect(huge.maxValue).toBe(999);
+  });
+
+  /**
+   * L'assenza non è un dettaglio: una barra senza risorse deve serializzarsi
+   * esattamente come prima che le risorse esistessero, altrimenti ogni campagna
+   * già salvata cambierebbe forma al primo caricamento.
+   */
+  it('sparisce del tutto invece di restare una lista vuota', () => {
+    expect(clampResources([])).toBeUndefined();
+    expect(clampResources(undefined)).toBeUndefined();
   });
 });
 

@@ -88,6 +88,81 @@ describe('normalizeCampaign applica i limiti', () => {
   });
 });
 
+/**
+ * Le risorse arrivano dalle stesse tre sorgenti della barra che le contiene, e
+ * una di queste è il database: il master può avere una versione più recente di
+ * un giocatore, o viceversa. Nessun dato malformato deve poter rompere la vista
+ * di chi legge.
+ */
+describe('risorse delle barre', () => {
+  const withResources = (resources: unknown) =>
+    normalizeCampaign({
+      title: 'X',
+      healthBars: [{ name: 'Boss', maxValue: 100, currentValue: 100, resources }],
+    }).healthBars[0];
+
+  it('conserva quelle valide con valori e colori propri', () => {
+    const bar = withResources([
+      { id: 'm', name: 'Mana', maxValue: 40, currentValue: 12, colorMode: 'smooth' },
+    ]);
+
+    expect(bar.resources).toHaveLength(1);
+    expect(bar.resources?.[0]).toMatchObject({
+      id: 'm',
+      name: 'Mana',
+      maxValue: 40,
+      currentValue: 12,
+      colorMode: 'smooth',
+    });
+  });
+
+  it('non ne tiene più di due', () => {
+    const bar = withResources([
+      { name: 'Uno' },
+      { name: 'Due' },
+      { name: 'Tre' },
+      { name: 'Quattro' },
+    ]);
+    expect(bar.resources).toHaveLength(2);
+  });
+
+  it('scarta quelle senza nome o non leggibili, senza lanciare', () => {
+    const bar = withResources([null, 42, 'testo', { name: '   ' }, { name: 'Scudo' }]);
+    expect(bar.resources).toHaveLength(1);
+    expect(bar.resources?.[0].name).toBe('Scudo');
+  });
+
+  it('riporta i valori entro i limiti della singola risorsa', () => {
+    const bar = withResources([{ name: 'Frenesia', maxValue: 10, currentValue: 999 }]);
+    expect(bar.resources?.[0].currentValue).toBe(10);
+  });
+
+  it('è visibile ai giocatori salvo esclusione esplicita', () => {
+    expect(withResources([{ name: 'Mana' }]).resources?.[0].shared).toBe(true);
+    expect(withResources([{ name: 'Mana', shared: false }]).resources?.[0].shared).toBe(false);
+  });
+
+  /**
+   * Il vincolo di compatibilità: una barra senza risorse deve riserializzarsi
+   * identica a com'era prima che le risorse esistessero, altrimenti ogni stanza
+   * già aperta cambierebbe forma alla prima scrittura.
+   */
+  it('resta assente quando non ce ne sono, invece di essere una lista vuota', () => {
+    for (const input of [undefined, [], 'niente', {}, [null]]) {
+      expect(withResources(input)).not.toHaveProperty('resources');
+    }
+  });
+
+  it('una barra senza risorse produce lo stesso JSON di una campagna precedente', () => {
+    const before = normalizeCampaign({
+      title: 'X',
+      healthBars: [{ id: 'b', name: 'Goblin', maxValue: 7, currentValue: 7 }],
+    });
+    const after = normalizeCampaign(JSON.parse(JSON.stringify(before)));
+    expect(JSON.stringify(after)).toBe(JSON.stringify(before));
+  });
+});
+
 describe('formati salvati', () => {
   it('legge il formato senza involucro delle versioni precedenti', () => {
     const legacy = JSON.stringify({

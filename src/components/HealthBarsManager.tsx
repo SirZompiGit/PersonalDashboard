@@ -10,9 +10,11 @@
  *  - I suoni non partono più da qui: li gestisce la singola barra. Prima ogni
  *    variazione di HP produceva due suoni sovrapposti.
  *  - Le cancellazioni si possono annullare.
+ *  - Il form di modifica vive in `HealthBarForm`: qui restano l'elenco e i
+ *    gruppi, che sono un'altra cosa.
  */
 
-import { type FormEvent, useState } from 'react';
+import { useState } from 'react';
 import type { HealthBar } from '../types';
 import type { CampaignAction } from '../state/campaignReducer';
 import {
@@ -27,65 +29,20 @@ import {
   X,
 } from 'lucide-react';
 import { HealthBarItem } from './HealthBarItem';
+import { HealthBarForm } from './HealthBarForm';
 import { ConfirmInline } from './ui/ConfirmInline';
 import { EmptyState } from './ui/EmptyState';
 import { IconButton } from './ui/IconButton';
+import { FIELD_SM } from './ui/fields';
 import { useToasts } from '../hooks/useToasts';
 import { usePersistentSet } from '../hooks/usePersistentState';
-import {
-  DEFAULT_ZERO_HP_TEXT,
-  MAX_HP,
-  MIN_HP,
-  clampMaxHp,
-  getBarColor,
-  groupBars,
-} from '../lib/healthBars';
+import { groupBars } from '../lib/healthBars';
 
 interface HealthBarsManagerProps {
   healthBars: HealthBar[];
   healthGroups: string[];
   dispatch: React.Dispatch<CampaignAction>;
 }
-
-const PRESET_COLORS = [
-  { name: 'Smeraldo', hex: '#10b981' },
-  { name: 'Cremisi', hex: '#ef4444' },
-  { name: 'Ambra', hex: '#f59e0b' },
-  { name: 'Zaffiro', hex: '#3b82f6' },
-  { name: 'Ametista', hex: '#a855f7' },
-  { name: 'Oceano', hex: '#06b6d4' },
-];
-
-const FIELD =
-  'w-full rounded-lg border border-bento-border bg-bento-panel px-3 py-2 text-sm text-slate-100 transition-colors duration-200 focus:border-theme-500 focus:outline-none focus:ring-1 focus:ring-theme-500/20';
-
-interface FormValues {
-  name: string;
-  maxValue: string;
-  currentValue: string;
-  colorMode: HealthBar['colorMode'];
-  staticColor: string;
-  low: string;
-  mid: string;
-  high: string;
-  group: string;
-  zeroHpText: string;
-  lowHpAlert: boolean;
-}
-
-const EMPTY_FORM: FormValues = {
-  name: '',
-  maxValue: '20',
-  currentValue: '20',
-  colorMode: 'static',
-  staticColor: '#10b981',
-  low: '#ef4444',
-  mid: '#f59e0b',
-  high: '#10b981',
-  group: '',
-  zeroHpText: DEFAULT_ZERO_HP_TEXT,
-  lowHpAlert: true,
-};
 
 export function HealthBarsManager({
   healthBars,
@@ -100,7 +57,6 @@ export function HealthBarsManager({
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<FormValues>(EMPTY_FORM);
 
   const [managingGroups, setManagingGroups] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
@@ -109,64 +65,12 @@ export function HealthBarsManager({
   const [deletingGroup, setDeletingGroup] = useState<string | null>(null);
 
   const { groups, ungrouped } = groupBars(healthBars, healthGroups);
-  const isFormOpen = isAdding || editingId !== null;
-
-  const setField = <K extends keyof FormValues>(key: K, value: FormValues[K]) =>
-    setForm((current) => ({ ...current, [key]: value }));
+  const editingBar = editingId ? (healthBars.find((b) => b.id === editingId) ?? null) : null;
+  const isFormOpen = isAdding || editingBar !== null;
 
   const closeForm = () => {
     setIsAdding(false);
     setEditingId(null);
-    setForm(EMPTY_FORM);
-  };
-
-  const startEdit = (bar: HealthBar) => {
-    setIsAdding(false);
-    setEditingId(bar.id);
-    setForm({
-      name: bar.name,
-      maxValue: String(bar.maxValue),
-      currentValue: String(bar.currentValue),
-      colorMode: bar.colorMode,
-      staticColor: bar.staticColor,
-      low: bar.gradientColors.low,
-      mid: bar.gradientColors.mid,
-      high: bar.gradientColors.high,
-      group: bar.group ?? '',
-      zeroHpText: bar.zeroHpText ?? DEFAULT_ZERO_HP_TEXT,
-      lowHpAlert: bar.lowHpAlert !== false,
-    });
-  };
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    const name = form.name.trim();
-    if (!name) return;
-
-    // I campi numerici restano stringhe mentre si scrive, così è possibile
-    // svuotarli; il limite si applica qui, una volta sola.
-    const maxValue = clampMaxHp(Number.parseInt(form.maxValue, 10) || MIN_HP);
-    const currentValue = Math.max(
-      0,
-      Math.min(Number.parseInt(form.currentValue, 10) || 0, maxValue),
-    );
-
-    const payload = {
-      name,
-      maxValue,
-      currentValue,
-      colorMode: form.colorMode,
-      staticColor: form.staticColor,
-      gradientColors: { low: form.low, mid: form.mid, high: form.high },
-      group: form.group || undefined,
-      zeroHpText: form.zeroHpText.trim() || DEFAULT_ZERO_HP_TEXT,
-      lowHpAlert: form.lowHpAlert,
-    };
-
-    if (editingId) dispatch({ type: 'UPDATE_HEALTH_BAR', id: editingId, changes: payload });
-    else dispatch({ type: 'ADD_HEALTH_BAR', bar: payload });
-
-    closeForm();
   };
 
   /** L'indice serve a rimettere la barra esattamente dov'era. */
@@ -193,11 +97,21 @@ export function HealthBarsManager({
     <HealthBarItem
       key={bar.id}
       bar={bar}
-      getBarColor={getBarColor}
       onChangeValue={(target, value) =>
         dispatch({ type: 'UPDATE_HEALTH_BAR', id: target.id, changes: { currentValue: value } })
       }
-      onEdit={startEdit}
+      onChangeResource={(target, resource, value) =>
+        dispatch({
+          type: 'SET_RESOURCE_VALUE',
+          barId: target.id,
+          resourceId: resource.id,
+          value,
+        })
+      }
+      onEdit={(target) => {
+        setIsAdding(false);
+        setEditingId(target.id);
+      }}
       onDelete={handleDeleteBar}
     />
   );
@@ -229,7 +143,7 @@ export function HealthBarsManager({
             <button
               type="button"
               onClick={() => {
-                setForm(EMPTY_FORM);
+                setEditingId(null);
                 setIsAdding(true);
               }}
               className="flex items-center gap-1 rounded-lg border border-bento-border bg-bento-panel px-3 py-1.5 text-xs font-semibold text-theme-500 shadow-panel transition-colors duration-200 hover:border-slate-600 hover:text-theme-400"
@@ -274,7 +188,7 @@ export function HealthBarsManager({
                 }
               }}
               maxLength={20}
-              className={`${FIELD} flex-grow text-xs`}
+              className={`${FIELD_SM} flex-grow`}
               aria-label="Nome del nuovo gruppo"
             />
             <button
@@ -376,250 +290,22 @@ export function HealthBarsManager({
       )}
 
       {isFormOpen && (
-        <form
-          onSubmit={handleSubmit}
-          className="mb-5 space-y-4 rounded-xl border border-bento-border bg-bento-bg p-4 sm:p-5"
-        >
-          <div className="flex items-center justify-between border-b border-bento-border pb-2">
-            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-theme-500">
-              {editingId ? 'Modifica Barra Vita' : 'Crea Nuova Barra Vita'}
-            </h3>
-            <IconButton label="Chiudi" onClick={closeForm}>
-              <X className="h-4 w-4" />
-            </IconButton>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-slate-400">
-                Nome (es. Goblin, Boss, Guerriero)
-              </span>
-              <input
-                type="text"
-                placeholder="Nome bersaglio..."
-                value={form.name}
-                onChange={(event) => setField('name', event.target.value)}
-                maxLength={60}
-                required
-                autoFocus
-                className={FIELD}
-              />
-            </label>
-
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-slate-400">Gruppo</span>
-              <select
-                value={form.group}
-                onChange={(event) => setField('group', event.target.value)}
-                className={`${FIELD} font-sans`}
-              >
-                <option value="">Nessun Gruppo</option>
-                {healthGroups.map((group) => (
-                  <option key={group} value={group}>
-                    {group}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-1 md:col-span-2">
-              <span className="text-xs font-medium text-slate-400">Testo a 0 HP</span>
-              <input
-                type="text"
-                placeholder={DEFAULT_ZERO_HP_TEXT}
-                value={form.zeroHpText}
-                onChange={(event) => setField('zeroHpText', event.target.value)}
-                maxLength={20}
-                className={`${FIELD} font-mono uppercase tracking-wider`}
-              />
-            </label>
-
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-bento-border bg-bento-panel px-3 py-2.5 select-none md:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.lowHpAlert}
-                onChange={(event) => setField('lowHpAlert', event.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-theme-500"
-              />
-              <span className="min-w-0">
-                <span className="block text-xs font-medium text-slate-200">
-                  Allerta sotto il 25%
-                </span>
-                <span className="block text-[11px] leading-snug text-slate-500">
-                  La barra pulsa quando i punti ferita scendono sotto un quarto. Si spegne da
-                  sola a 0 HP, dove compare già l&apos;etichetta.
-                </span>
-              </span>
-            </label>
-
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-slate-400">
-                Valore Massimo (max {MAX_HP})
-              </span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={MIN_HP}
-                max={MAX_HP}
-                value={form.maxValue}
-                onChange={(event) => setField('maxValue', event.target.value)}
-                onBlur={() =>
-                  setField('maxValue', String(clampMaxHp(Number.parseInt(form.maxValue, 10) || MIN_HP)))
-                }
-                className={`${FIELD} font-mono`}
-              />
-            </label>
-
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-slate-400">Valore Attuale</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                max={clampMaxHp(Number.parseInt(form.maxValue, 10) || MIN_HP)}
-                value={form.currentValue}
-                onChange={(event) => setField('currentValue', event.target.value)}
-                className={`${FIELD} font-mono`}
-              />
-            </label>
-          </div>
-
-          <fieldset className="space-y-2">
-            <legend className="mb-1 block text-xs font-medium text-slate-400">
-              Modalità Colore
-            </legend>
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-4">
-              {(
-                [
-                  { id: 'static', label: 'Colore singolo', hint: 'Sempre lo stesso' },
-                  { id: 'gradient', label: 'A 3 livelli', hint: 'Scatti netti alle soglie' },
-                  { id: 'smooth', label: 'Sfumato', hint: 'Passaggio graduale' },
-                ] as const
-              ).map(({ id, label, hint }) => (
-                <label
-                  key={id}
-                  className="flex cursor-pointer items-center gap-2 text-xs text-slate-300 select-none"
-                  title={hint}
-                >
-                  <input
-                    type="radio"
-                    name="colorMode"
-                    checked={form.colorMode === id}
-                    onChange={() => setField('colorMode', id)}
-                    className="accent-theme-500"
-                  />
-                  {label}
-                  <span className="text-slate-600">— {hint}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          {form.colorMode === 'static' ? (
-            <div className="space-y-2">
-              <span className="block text-xs font-medium text-slate-400">
-                Scegli Colore Statico
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                {PRESET_COLORS.map((preset) => (
-                  <button
-                    key={preset.hex}
-                    type="button"
-                    onClick={() => setField('staticColor', preset.hex)}
-                    style={{ backgroundColor: preset.hex }}
-                    aria-label={preset.name}
-                    aria-pressed={form.staticColor === preset.hex}
-                    className={`h-7 w-7 rounded-full border-2 transition-transform duration-200 ${
-                      form.staticColor === preset.hex
-                        ? 'scale-110 border-white shadow-raised'
-                        : 'border-transparent hover:scale-105'
-                    }`}
-                  />
-                ))}
-                <label className="ml-1 flex items-center gap-1.5 rounded-lg border border-bento-border bg-bento-panel px-2 py-1">
-                  <span className="font-mono text-[10px] text-slate-400">Custom</span>
-                  <input
-                    type="color"
-                    value={form.staticColor}
-                    onChange={(event) => setField('staticColor', event.target.value)}
-                    aria-label="Colore personalizzato"
-                    className="h-6 w-6 cursor-pointer rounded border-0 bg-transparent"
-                  />
-                </label>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3 rounded-lg border border-bento-border bg-bento-panel p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-mono text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Colori della salute
-                </span>
-
-                {/* Anteprima: mostra subito la differenza fra gradini e sfumatura. */}
-                <span
-                  className="h-2.5 w-32 rounded-full border border-bento-border"
-                  style={{
-                    background:
-                      form.colorMode === 'smooth'
-                        ? `linear-gradient(to right, ${form.low}, ${form.mid}, ${form.high})`
-                        : `linear-gradient(to right, ${form.low} 0 33%, ${form.mid} 33% 66%, ${form.high} 66% 100%)`,
-                  }}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {(
-                  [
-                    {
-                      key: 'low',
-                      label: form.colorMode === 'smooth' ? 'A 0%' : 'Basso (≤ 33%)',
-                      tone: 'text-red-400',
-                    },
-                    {
-                      key: 'mid',
-                      label: form.colorMode === 'smooth' ? 'A 50%' : 'Medio (34-66%)',
-                      tone: 'text-amber-400',
-                    },
-                    {
-                      key: 'high',
-                      label: form.colorMode === 'smooth' ? 'A 100%' : 'Alto (≥ 67%)',
-                      tone: 'text-emerald-400',
-                    },
-                  ] as const
-                ).map(({ key, label, tone }) => (
-                  <label key={key} className="space-y-1">
-                    <span className={`block text-[10px] font-semibold ${tone}`}>{label}</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={form[key]}
-                        onChange={(event) => setField(key, event.target.value)}
-                        className="h-7 w-7 cursor-pointer rounded border border-bento-border bg-transparent"
-                      />
-                      <span className="font-mono text-[10px] text-slate-400">{form[key]}</span>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2 border-t border-bento-border pt-3">
-            <button
-              type="button"
-              onClick={closeForm}
-              className="rounded-lg border border-bento-border bg-bento-button px-4 py-2 text-xs font-medium text-slate-300 transition-colors duration-200 hover:bg-bento-border"
-            >
-              Annulla
-            </button>
-            <button
-              type="submit"
-              className="rounded-lg border border-theme-500 bg-theme-600 px-4 py-2 text-xs font-semibold text-white transition-colors duration-200 hover:bg-theme-500"
-            >
-              {editingId ? 'Aggiorna Barra' : 'Crea Barra'}
-            </button>
-          </div>
-        </form>
+        <HealthBarForm
+          // Passando da una barra all'altra il form si rimonta con i valori
+          // giusti, invece di conservare quelli di prima.
+          key={editingBar?.id ?? 'new'}
+          bar={editingBar}
+          healthGroups={healthGroups}
+          onCancel={closeForm}
+          onSubmit={(payload) => {
+            if (editingBar) {
+              dispatch({ type: 'UPDATE_HEALTH_BAR', id: editingBar.id, changes: payload });
+            } else {
+              dispatch({ type: 'ADD_HEALTH_BAR', bar: payload });
+            }
+            closeForm();
+          }}
+        />
       )}
 
       {healthBars.length === 0 ? (

@@ -199,6 +199,10 @@ describe('classi Tailwind in conflitto', () => {
     { name: 'padding-x', test: /^px-[\d.]+$/ },
     { name: 'padding-y', test: /^py-[\d.]+$/ },
     { name: 'margin', test: /^m-[\d.]+$/ },
+    // `w-full` seguito da `w-20` non dà una larghezza di 20: sono la stessa
+    // proprietà, e vince quella che capita dopo nel CSS, non nell'attributo.
+    { name: 'width', test: /^w-(full|auto|screen|min|max|fit|px|[\d.]+|\[[^\]]+\])$/ },
+    { name: 'height', test: /^h-(full|auto|screen|min|max|fit|px|[\d.]+|\[[^\]]+\])$/ },
     { name: 'display', test: /^(block|flex|grid|inline-flex|hidden)$/ },
     { name: 'flex-direction', test: /^flex-(row|col|row-reverse|col-reverse)$/ },
     { name: 'border-radius', test: /^rounded(-(none|sm|md|lg|xl|2xl|3xl|full))?$/ },

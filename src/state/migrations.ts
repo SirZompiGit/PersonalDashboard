@@ -17,15 +17,23 @@
 import type {
   BonusItem,
   CampaignState,
+  ColoredBar,
   GradientColors,
   HealthBar,
   InventoryItem,
   Player,
+  Resource,
   RollResult,
 } from '../types';
 import { newId } from '../lib/ids';
 import { DEFAULT_DICE, isDiceType } from '../lib/dice';
-import { DEFAULT_ZERO_HP_TEXT, clampHp, clampMaxHp } from '../lib/healthBars';
+import {
+  DEFAULT_RESOURCE_COLOR,
+  DEFAULT_ZERO_HP_TEXT,
+  MAX_RESOURCES,
+  clampHp,
+  clampMaxHp,
+} from '../lib/healthBars';
 import { normalizeLogoVariant, normalizeStyle, normalizeTheme } from '../theme';
 import { DEFAULT_DICE_LABELS, createEmptyCampaign } from './defaults';
 
@@ -107,6 +115,35 @@ function normalizeGradient(value: unknown): GradientColors {
   };
 }
 
+const asColorMode = (value: unknown): ColoredBar['colorMode'] =>
+  value === 'gradient' || value === 'smooth' ? value : 'static';
+
+/**
+ * Una risorsa arriva dalle stesse tre sorgenti della barra che la contiene:
+ * localStorage, file importato e database. Un dato corrotto non deve poter
+ * rompere la vista di un giocatore, quindi qui non si lancia mai: al peggio la
+ * risorsa viene scartata.
+ */
+function normalizeResource(value: unknown): Resource | null {
+  if (!isRecord(value)) return null;
+  const name = asString(value.name).trim();
+  if (!name) return null;
+
+  const maxValue = clampMaxHp(asNumber(value.maxValue, 1));
+
+  return {
+    id: asString(value.id) || newId(),
+    name: name.slice(0, 30),
+    maxValue,
+    currentValue: clampHp(asNumber(value.currentValue, 0), maxValue),
+    colorMode: asColorMode(value.colorMode),
+    staticColor: asColor(value.staticColor, DEFAULT_RESOURCE_COLOR),
+    gradientColors: normalizeGradient(value.gradientColors),
+    // Visibile salvo esplicita esclusione, come `lowHpAlert`.
+    shared: value.shared !== false,
+  };
+}
+
 function normalizeHealthBar(value: unknown): HealthBar | null {
   if (!isRecord(value)) return null;
   const name = asString(value.name).trim();
@@ -123,10 +160,7 @@ function normalizeHealthBar(value: unknown): HealthBar | null {
     name: name.slice(0, 60),
     maxValue,
     currentValue: clampHp(asNumber(value.currentValue, 0), maxValue),
-    colorMode:
-      value.colorMode === 'gradient' || value.colorMode === 'smooth'
-        ? value.colorMode
-        : 'static',
+    colorMode: asColorMode(value.colorMode),
     staticColor: asColor(value.staticColor, '#10b981'),
     gradientColors: normalizeGradient(value.gradientColors),
     zeroHpText: zeroHpText ? zeroHpText.slice(0, 30) : DEFAULT_ZERO_HP_TEXT,
@@ -138,6 +172,15 @@ function normalizeHealthBar(value: unknown): HealthBar | null {
   // `group` resta assente quando è vuoto: Firebase rifiuta i valori undefined
   // solo dopo la serializzazione, e questa forma è quella già in uso.
   if (group) bar.group = group.slice(0, 40);
+
+  // Stessa regola per le risorse: assenti quando non ce ne sono, così una barra
+  // creata prima di questa funzione si riserializza identica a com'era.
+  const resources = asArray(value.resources)
+    .map(normalizeResource)
+    .filter((r): r is Resource => r !== null)
+    .slice(0, MAX_RESOURCES);
+
+  if (resources.length > 0) bar.resources = resources;
 
   return bar;
 }

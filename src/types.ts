@@ -26,9 +26,12 @@ export interface GradientColors {
   high: string;
 }
 
-export interface HealthBar {
-  id: string;
-  name: string;
+/**
+ * Quanto basta per disegnare e colorare una barra: è la parte comune fra la
+ * barra della vita e le risorse agganciate ad essa, ed è anche l'unico
+ * argomento di cui `getBarColor` ha bisogno.
+ */
+export interface ColoredBar {
   currentValue: number;
   maxValue: number;
   /**
@@ -39,6 +42,26 @@ export interface HealthBar {
   colorMode: 'static' | 'gradient' | 'smooth';
   staticColor: string;
   gradientColors: GradientColors;
+}
+
+/**
+ * Barra secondaria agganciata a una barra della vita: mana, scudo, frenesia,
+ * slot incantesimo. Ha valori e colori propri, ma non gruppo, testo a 0 HP né
+ * allerta — quelli descrivono la salute, non una risorsa.
+ */
+export interface Resource extends ColoredBar {
+  id: string;
+  name: string;
+  /**
+   * Visibile ai giocatori nella vista condivisa. Permette di tenersi nascosta
+   * la frenesia di un mostro mostrandone però lo scudo.
+   */
+  shared: boolean;
+}
+
+export interface HealthBar extends ColoredBar {
+  id: string;
+  name: string;
   /** Gruppo di appartenenza. Assente = "Senza Gruppo". */
   group?: string;
   /** Testo mostrato a 0 HP. */
@@ -49,6 +72,12 @@ export interface HealthBar {
    * default dalla normalizzazione.
    */
   lowHpAlert?: boolean;
+  /**
+   * Risorse associate, al massimo due. Campo additivo e assente quando la lista
+   * è vuota: le barre senza risorse producono lo stesso identico payload di
+   * prima, quindi le stanze già esistenti non cambiano di una virgola.
+   */
+  resources?: Resource[];
 }
 
 export interface RollResult {

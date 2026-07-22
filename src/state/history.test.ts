@@ -132,3 +132,65 @@ describe('sincronizzazione fra schede', () => {
     expect(h.present.title).toBe('Da un altra scheda');
   });
 });
+
+describe('trascinamento di una risorsa', () => {
+  const barWith = () =>
+    historyReducer(start(), {
+      type: 'ADD_HEALTH_BAR',
+      bar: {
+        name: 'Arcimago',
+        maxValue: 60,
+        currentValue: 60,
+        colorMode: 'static',
+        staticColor: '#10b981',
+        gradientColors: { low: '#ef4444', mid: '#f59e0b', high: '#10b981' },
+        resources: [
+          {
+            id: 'mana',
+            name: 'Mana',
+            maxValue: 40,
+            currentValue: 40,
+            colorMode: 'static',
+            staticColor: '#3b82f6',
+            gradientColors: { low: '#ef4444', mid: '#f59e0b', high: '#10b981' },
+            shared: true,
+          },
+        ],
+      },
+    });
+
+  /**
+   * Il trascinamento produce decine di azioni al secondo: senza fusione un solo
+   * Ctrl+Z tornerebbe indietro di un punto di mana per volta.
+   */
+  it('un gesto continuo occupa una sola voce di cronologia', () => {
+    let h = barWith();
+    const barId = h.present.healthBars.at(-1)!.id;
+    const depth = h.past.length;
+
+    for (const value of [35, 30, 25, 20]) {
+      h = historyReducer(h, { type: 'SET_RESOURCE_VALUE', barId, resourceId: 'mana', value });
+    }
+
+    expect(h.present.healthBars.at(-1)!.resources?.[0].currentValue).toBe(20);
+    expect(h.past.length).toBe(depth + 1);
+
+    h = historyReducer(h, { type: 'UNDO' });
+    expect(h.present.healthBars.at(-1)!.resources?.[0].currentValue).toBe(40);
+  });
+
+  it('due risorse diverse restano due gesti distinti', () => {
+    let h = barWith();
+    const barId = h.present.healthBars.at(-1)!.id;
+    const depth = h.past.length;
+
+    h = historyReducer(h, { type: 'SET_RESOURCE_VALUE', barId, resourceId: 'mana', value: 10 });
+    h = historyReducer(h, {
+      type: 'UPDATE_HEALTH_BAR',
+      id: barId,
+      changes: { currentValue: 5 },
+    });
+
+    expect(h.past.length).toBe(depth + 2);
+  });
+});

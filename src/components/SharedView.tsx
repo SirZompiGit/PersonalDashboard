@@ -17,6 +17,7 @@ import type { CampaignState, HealthBar, RollResult } from '../types';
 import type { RoomUser } from '../firebaseUtils';
 import {
   BookOpen,
+  ChevronRight,
   Dices,
   GripHorizontal,
   GripVertical,
@@ -35,15 +36,25 @@ import { CRITICAL_COLOR, DiceShape, FUMBLE_COLOR } from './DiceShape';
 import { CritSparkles } from './CritSparkles';
 import { Modal } from './ui/Modal';
 import { IconButton } from './ui/IconButton';
-import { getBarColor, groupBars } from '../lib/healthBars';
+import { groupBars } from '../lib/healthBars';
 import { isCritical, isFumble, parseSides } from '../lib/dice';
 import { decodeRollLabel, resolveRollerName } from '../lib/participantRolls';
 import { getThemeAccent } from '../theme';
 import { NARROW_SCREEN, useMediaQuery } from '../hooks/useMediaQuery';
+import { usePersistentSet } from '../hooks/usePersistentState';
 import { useSharedViewControls } from '../hooks/useSharedViewControls';
 import { playCritFailSound, playCritSuccessSound, playRollSound } from '../utils/audio';
 
 const LAYOUT_KEY = 'fantasia_shared_health_layout';
+
+/**
+ * Gruppi chiusi in questa vista.
+ *
+ * Chiave distinta da quella della dashboard apposta: chiudendo un gruppo per sé
+ * il master lo chiuderebbe anche a tutti i giocatori, che è il contrario di ciò
+ * che serve. Ogni schermo decide cosa mostrare.
+ */
+const COLLAPSED_KEY = 'fantasia_shared_collapsed_groups';
 
 /** Lanci dei giocatori mostrati: una striscia, senza andare a capo. */
 const MAX_VISIBLE_ROLLS = 4;
@@ -198,12 +209,16 @@ export function SharedView({
   const isNarrow = useMediaQuery(NARROW_SCREEN);
   const effectiveLayout: HealthLayout = isNarrow ? 'horizontal' : healthLayout;
 
+  const collapsed = usePersistentSet(COLLAPSED_KEY);
+
   const renderBar = (bar: HealthBar) => (
     <HealthBarItem
       key={bar.id}
       bar={bar}
-      getBarColor={getBarColor}
       onChangeValue={() => {}}
+      // Le risorse che il master tiene private spariscono anche dalla sua
+      // anteprima: quello che vede qui è esattamente ciò che vedono i giocatori.
+      onlySharedResources
       readOnly
       layout={effectiveLayout}
     />
@@ -433,32 +448,46 @@ export function SharedView({
                   <p className="py-6 text-center text-sm italic text-slate-600">
                     Nessun tracciatore di salute.
                   </p>
+                ) : groups.length === 0 ? (
+                  // Senza gruppi c'è una sola lista: un'intestazione da chiudere
+                  // nasconderebbe tutto e basta.
+                  <div className={barsContainer}>{ungrouped.map(renderBar)}</div>
                 ) : (
-                  <>
-                    {groups.map(({ name, bars }) => (
-                      <div key={name} className="space-y-2.5">
-                        <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1">
-                          <span className="rounded border border-bento-border/40 bg-bento-bg px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                            {name}
-                          </span>
-                        </div>
-                        <div className={barsContainer}>{bars.map(renderBar)}</div>
-                      </div>
-                    ))}
+                  [
+                    ...groups.map(({ name, bars }) => ({ key: name, name, bars })),
+                    ...(ungrouped.length > 0
+                      ? [{ key: '__ungrouped__', name: 'Senza Gruppo', bars: ungrouped }]
+                      : []),
+                  ].map((section) => {
+                    const isCollapsed = collapsed.has(section.key);
 
-                    {ungrouped.length > 0 && (
-                      <div className="space-y-2.5">
-                        {groups.length > 0 && (
-                          <div className="flex items-center gap-2 border-b border-bento-border/30 pb-1">
-                            <span className="rounded border border-bento-border/40 bg-bento-bg px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                              Senza Gruppo
-                            </span>
-                          </div>
+                    return (
+                      <div key={section.key} className="space-y-2.5">
+                        <button
+                          type="button"
+                          onClick={() => collapsed.toggle(section.key)}
+                          aria-expanded={!isCollapsed}
+                          className="group/head flex w-full items-center gap-2 border-b border-bento-border/30 pb-1 text-left transition-colors duration-200 hover:border-bento-border"
+                        >
+                          <ChevronRight
+                            className={`h-3.5 w-3.5 shrink-0 text-slate-500 transition-transform duration-200 group-hover/head:text-slate-300 ${
+                              isCollapsed ? '' : 'rotate-90'
+                            }`}
+                          />
+                          <span className="rounded border border-bento-border/40 bg-bento-bg px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            {section.name}
+                          </span>
+                          <span className="font-mono text-[10px] text-slate-500">
+                            ({section.bars.length})
+                          </span>
+                        </button>
+
+                        {!isCollapsed && (
+                          <div className={barsContainer}>{section.bars.map(renderBar)}</div>
                         )}
-                        <div className={barsContainer}>{ungrouped.map(renderBar)}</div>
                       </div>
-                    )}
-                  </>
+                    );
+                  })
                 )}
               </div>
             </section>
