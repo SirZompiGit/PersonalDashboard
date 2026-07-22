@@ -13,11 +13,24 @@
  * salvate ma vengono messe da parte finché dura la sessione.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'fantasia_media';
 /** Chiave usata prima che esistesse l'immagine di scena. */
 const LEGACY_KEY = 'fantasia_background';
+/**
+ * Canale di sincronizzazione fra schede.
+ *
+ * Senza, la finestra dello schermo condiviso leggeva le immagini solo al
+ * proprio avvio: caricandone una dopo averla aperta, lì non compariva nulla.
+ * È lo stesso meccanismo che tiene allineata la campagna.
+ */
+const CHANNEL_NAME = 'fantasia_media_channel';
+
+interface ChannelMessage {
+  __fantasia: 'media';
+  json: string;
+}
 
 /**
  * Lato massimo a cui le immagini vengono ridotte.
@@ -155,7 +168,47 @@ export function useMedia(): UseMediaResult {
   const [remote, setRemote] = useState<MediaSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /** Ultima serializzazione scritta o ricevuta: taglia gli echi fra schede. */
+  const lastSyncedRef = useRef<string | null>(null);
+  const channelRef = useRef<BroadcastChannel | null>(null);
+
   const media = remote ?? local;
+
+  // Ascolto delle altre schede. La finestra dello schermo condiviso è una di
+  // queste: è così che vede le immagini caricate dopo la sua apertura.
+  useEffect(() => {
+    const adopt = (json: string) => {
+      if (json === lastSyncedRef.current) return;
+      lastSyncedRef.current = json;
+      try {
+        setLocal(normalizeMedia(JSON.parse(json)));
+      } catch {
+        /* messaggio illeggibile: si ignora */
+      }
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY && event.newValue) adopt(event.newValue);
+    };
+    window.addEventListener('storage', onStorage);
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel(CHANNEL_NAME);
+      channelRef.current = channel;
+      channel.onmessage = (event: MessageEvent<ChannelMessage>) => {
+        if (event.data?.__fantasia === 'media') adopt(event.data.json);
+      };
+    } catch (e) {
+      console.warn('[fantasia] sincronizzazione immagini non disponibile:', e);
+    }
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      channel?.close();
+      channelRef.current = null;
+    };
+  }, []);
 
   // Le impostazioni viaggiano come variabili CSS su <html>: il livello di
   // sfondo è definito una volta sola in index.css e legge da lì.
@@ -180,9 +233,16 @@ export function useMedia(): UseMediaResult {
   // Solo le proprie impostazioni vengono salvate: quelle ricevute dalla stanza
   // appartengono al master e non devono sovrascrivere le tue.
   useEffect(() => {
+    const json = JSON.stringify(local);
+    // Se è lo stato appena ricevuto da un'altra scheda, non va rimandato
+    // indietro: due finestre se lo rimbalzerebbero all'infinito.
+    if (json === lastSyncedRef.current) return;
+    lastSyncedRef.current = json;
+
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
+      localStorage.setItem(STORAGE_KEY, json);
       setError(null);
+      channelRef.current?.postMessage({ __fantasia: 'media', json } satisfies ChannelMessage);
     } catch {
       setError(
         'Spazio del browser esaurito: le immagini non sono state salvate e spariranno al prossimo avvio.',

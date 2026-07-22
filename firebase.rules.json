@@ -1,51 +1,58 @@
-{
-  "_commento": [
-    "REGOLE DI RIFERIMENTO — NON APPLICATE.",
-    "",
-    "Sono più strette della configurazione di test predefinita: leggile e",
-    "valutale prima del deploy, perché potrebbero richiedere aggiustamenti",
-    "rispetto a come usi il database oggi.",
-    "",
-    "Deploy:  firebase deploy --only database",
-    "",
-    "Cosa cambia rispetto all'accesso libero:",
-    "  - si può leggere e scrivere solo dentro rooms/{pin}, mai la radice;",
-    "  - il PIN deve essere esattamente 6 cifre, quindi non si possono creare",
-    "    nodi arbitrari;",
-    "  - una stanza esistente non può essere sovrascritta in blocco: si scrive",
-    "    solo nei rami campaign, users e participantRolls;",
-    "  - ogni utente può modificare solo il proprio nodo, tranne il campo",
-    "    assignedPlayerId che il master usa per assegnare i personaggi;",
-    "  - i lanci sono limitati a 10 elementi.",
-    "",
-    "Limite noto: senza autenticazione non è possibile distinguere il master",
-    "dai giocatori. Per farlo servirebbe Firebase Authentication (anche solo",
-    "anonima) e un campo masterUid nella stanza."
-  ],
+// ===========================================================================
+// FANTASIA — Regole del Realtime Database
+// ===========================================================================
+//
+// Da incollare in Firebase Console → Realtime Database → Regole, oppure da
+// applicare con:  firebase deploy --only database
+//
+// Cosa cambiano rispetto all'accesso libero (.read/.write = true):
+//   - la radice è chiusa: si può leggere e scrivere solo dentro rooms/ e
+//     roomMedia/, mai altrove;
+//   - il PIN deve essere esattamente 6 cifre, quindi non si possono creare
+//     nodi arbitrari nel database;
+//   - una stanza esistente non può essere sovrascritta o svuotata in blocco:
+//     si scrive solo nei rami campaign, users, participantRolls e lastSeen;
+//   - i campi sconosciuti vengono rifiutati, così nessuno può usare il tuo
+//     database come deposito di dati propri;
+//   - i lanci sono limitati a 10 e le immagini a 4 MB.
+//
+// LIMITE NOTO: senza autenticazione non è possibile distinguere il master dai
+// giocatori, quindi chiunque conosca il PIN può modificare la stanza. Per
+// separare i ruoli servirebbe Firebase Authentication (anche solo anonima) e
+// un campo con l'identificativo del master.
+//
+// Le regole sono più strette della configurazione di test: dopo averle
+// applicate, prova subito a creare una stanza, farvi entrare un giocatore e
+// fargli tirare un dado.
+// ===========================================================================
 
+{
   "rules": {
+    // Tutto chiuso salvo ciò che viene aperto esplicitamente più sotto.
     ".read": false,
     ".write": false,
 
     "rooms": {
-      "_nota": [
-        "La lettura di /rooms è consentita SOLO tramite la query indicizzata su",
-        "lastSeen: serve alla raccolta delle stanze abbandonate, che i client",
-        "eseguono al proprio avvio. Senza un backend è l'unico modo per liberare",
-        "le stanze il cui master ha chiuso il browser."
-      ],
+      // La lettura dell'elenco è concessa SOLO tramite la query indicizzata su
+      // lastSeen, quella che i client usano per liberare le stanze abbandonate.
+      // Non consente di scaricare tutte le stanze.
       ".read": "query.orderByChild === 'lastSeen' && query.limitToFirst <= 50",
       ".indexOn": ["lastSeen"],
 
       "$pin": {
         ".read": "$pin.matches(/^[0-9]{6}$/)",
+
+        // Su tutta la stanza si può solo crearla o eliminarla: le modifiche
+        // passano dai rami qui sotto, che sono validati uno per uno.
         ".write": "$pin.matches(/^[0-9]{6}$/) && (!data.exists() || !newData.exists())",
 
         "campaign": {
           ".write": "$pin.matches(/^[0-9]{6}$/)",
-          "title": { ".validate": "newData.isString() && newData.val().length <= 80" }
+          "title": { ".validate": "newData.isString() && newData.val().length <= 120" }
         },
 
+        // Segnale di vita del master: è ciò che permette di riconoscere le
+        // stanze abbandonate e cancellarle.
         "lastSeen": {
           ".write": "$pin.matches(/^[0-9]{6}$/)",
           ".validate": "newData.isNumber()"
@@ -55,23 +62,23 @@
           "$userId": {
             ".write": "$pin.matches(/^[0-9]{6}$/)",
             "id": { ".validate": "newData.val() === $userId" },
-            "name": { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "name": { ".validate": "newData.isString() && newData.val().length <= 40" },
             "notes": { ".validate": "newData.isString() && newData.val().length <= 20000" },
-            "assignedPlayerId": {
-              ".validate": "newData.isString() || newData.val() === null"
-            },
+            "assignedPlayerId": { ".validate": "newData.isString()" },
             "$altro": { ".validate": false }
           }
         },
 
         "participantRolls": {
           ".write": "$pin.matches(/^[0-9]{6}$/)",
-          ".validate": "newData.hasChildren() ? newData.numChildren() <= 10 : true",
-          "$index": {
-            "diceType": { ".validate": "newData.isString() && newData.val().matches(/^d[0-9]{1,3}$/)" },
+          ".validate": "!newData.hasChildren() || newData.numChildren() <= 10",
+          "$indice": {
+            "diceType": {
+              ".validate": "newData.isString() && newData.val().matches(/^d[0-9]{1,3}$/)"
+            },
             "result": { ".validate": "newData.isNumber() && newData.val() >= 1" },
             "timestamp": { ".validate": "newData.isNumber()" },
-            "label": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "label": { ".validate": "newData.isString() && newData.val().length <= 300" },
             "$altro": { ".validate": false }
           }
         },
@@ -80,22 +87,24 @@
       }
     },
 
+    // Sfondo e immagine di scena. Stanno su un ramo separato da rooms/{pin}
+    // apposta: la sottoscrizione alla stanza riceve l'intero nodo a ogni
+    // modifica della campagna, e con le immagini lì dentro ogni tasto premuto
+    // negli appunti avrebbe rispedito centinaia di kilobyte a tutti i
+    // giocatori collegati.
     "roomMedia": {
-      "_nota": [
-        "Sfondo e immagine di scena della stanza. Stanno su un ramo separato da",
-        "rooms/{pin} apposta: la sottoscrizione alla stanza riceve l'intero nodo",
-        "a ogni modifica della campagna, e con le immagini lì dentro ogni tasto",
-        "premuto negli appunti avrebbe rispedito centinaia di kilobyte a tutti i",
-        "giocatori collegati."
-      ],
       "$pin": {
         ".read": "$pin.matches(/^[0-9]{6}$/)",
         ".write": "$pin.matches(/^[0-9]{6}$/)",
         "source": { ".validate": "newData.isString() && newData.val().length <= 4000000" },
         "scene": { ".validate": "newData.isString() && newData.val().length <= 4000000" },
         "repeat": { ".validate": "newData.isBoolean()" },
-        "blur": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 40" },
-        "opacity": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1" },
+        "blur": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 40"
+        },
+        "opacity": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1"
+        },
         "$altro": { ".validate": false }
       }
     }

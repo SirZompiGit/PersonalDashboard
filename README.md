@@ -53,13 +53,21 @@ Gli utenti vengono rimossi dal server quando la scheda si chiude (`onDisconnect`
 
 ### Regole di sicurezza
 
-Il file [`firebase.rules.json`](firebase.rules.json) contiene regole di riferimento **non applicate**: leggile e valutale prima di usarle, perché sono più strette della configurazione di test predefinita.
+Due file, per due database diversi:
+
+| File | Database | Cosa fa |
+|---|---|---|
+| [`firestore.rules`](firestore.rules) | Cloud Firestore | **Lo chiude del tutto.** Fantasia non usa Firestore: lasciarlo aperto significa avere un database pubblico che paghi tu, senza alcun vantaggio |
+| [`firebase.rules.json`](firebase.rules.json) | Realtime Database | Chiude la radice, limita i PIN a 6 cifre, valida ogni campo e rifiuta quelli sconosciuti |
 
 ```bash
-firebase deploy --only database
+firebase deploy --only firestore:rules   # nessun rischio: l'app non usa Firestore
+firebase deploy --only database          # da provare subito dopo averlo applicato
 ```
 
-Senza regole, chiunque può leggere e scrivere qualsiasi stanza indovinando un PIN a 6 cifre.
+Le regole del Realtime Database sono più strette della configurazione di test: dopo averle applicate, crea una stanza, falla raggiungere da un giocatore e fagli tirare un dado.
+
+**Limite noto:** senza autenticazione non si distingue il master dai giocatori, quindi chiunque conosca il PIN può modificare la stanza. Separare i ruoli richiederebbe Firebase Authentication.
 
 ## Scorciatoie da tastiera
 

@@ -71,8 +71,20 @@ interface DashboardHeaderProps {
   sharingMedia: boolean;
 }
 
+/**
+ * Altezza comune a tutti i controlli della barra.
+ * Prima ognuno la ricavava dal proprio contenuto — testo, icona, gruppo di
+ * icone — e bastava un'icona di dimensione diversa perché un pulsante
+ * risultasse più spesso degli altri.
+ */
+const TOOL_HEIGHT = 'h-9';
+
 const TOOL_BUTTON =
-  'flex items-center gap-1.5 rounded-xl border border-bento-border bg-bento-panel px-3 py-2 text-xs font-semibold text-slate-300 transition-colors duration-200 hover:bg-bento-button';
+  `flex ${TOOL_HEIGHT} shrink-0 items-center gap-1.5 rounded-xl border border-bento-border bg-bento-panel px-3 text-xs font-semibold text-slate-300 transition-colors duration-200 hover:bg-bento-button`;
+
+/** Variante in evidenza: l'azione principale della barra. */
+const TOOL_BUTTON_ACCENT =
+  `flex ${TOOL_HEIGHT} shrink-0 items-center gap-1.5 rounded-xl border border-theme-500 bg-theme-600 px-4 text-xs font-bold text-white shadow-raised transition-colors duration-200 hover:bg-theme-500 active:scale-[0.98]`;
 
 export function DashboardHeader({
   theme,
@@ -132,7 +144,9 @@ export function DashboardHeader({
   }, [settingsOpen, toolsOpen]);
 
   const undoRedo = (
-    <div className="flex items-center gap-0.5 rounded-xl border border-bento-border bg-bento-panel px-1 py-1">
+    <div
+      className={`flex ${TOOL_HEIGHT} shrink-0 items-center gap-0.5 rounded-xl border border-bento-border bg-bento-panel px-1`}
+    >
       <IconButton
         label="Annulla (Ctrl+Z)"
         onClick={onUndo}
@@ -166,17 +180,15 @@ export function DashboardHeader({
         Esporta JSON
       </button>
 
-      <button type="button" onClick={onOpenSharedWindow} className={TOOL_BUTTON}>
-        <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+      {/* Aprire lo schermo per i giocatori è l'azione principale: l'anteprima
+          serve solo a controllare come apparirà. */}
+      <button type="button" onClick={onOpenSharedWindow} className={TOOL_BUTTON_ACCENT}>
+        <ExternalLink className="h-3.5 w-3.5" />
         Schermo Giocatori
       </button>
 
-      <button
-        type="button"
-        onClick={onPreviewShared}
-        className="flex items-center gap-1.5 rounded-xl border border-theme-500 bg-theme-600 px-4 py-2 text-xs font-bold text-white shadow-raised transition-colors duration-200 hover:bg-theme-500 active:scale-[0.98]"
-      >
-        <Wand2 className="h-3.5 w-3.5" />
+      <button type="button" onClick={onPreviewShared} className={TOOL_BUTTON}>
+        <Wand2 className="h-3.5 w-3.5 text-slate-400" />
         Anteprima Condivisione
       </button>
     </>
@@ -232,7 +244,7 @@ export function DashboardHeader({
             onClick={() => setToolsOpen((v) => !v)}
             aria-label="Strumenti"
             aria-expanded={toolsOpen}
-            className="rounded-xl border border-bento-border bg-bento-panel p-2 text-slate-300 transition-colors duration-200 hover:bg-bento-button"
+            className={`flex ${TOOL_HEIGHT} w-9 shrink-0 items-center justify-center rounded-xl border border-bento-border bg-bento-panel text-slate-300 transition-colors duration-200 hover:bg-bento-button`}
           >
             <MoreHorizontal className="h-4 w-4" />
           </button>
@@ -494,7 +506,7 @@ function HomeButton({ onClick }: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       aria-label="Esci e torna alla schermata iniziale"
-      className="flex items-center gap-1.5 rounded-xl border border-bento-border bg-bento-panel px-3 py-2 text-xs font-semibold text-slate-300 transition-colors duration-200 hover:bg-bento-button hover:text-theme-400"
+      className={`flex ${TOOL_HEIGHT} shrink-0 items-center gap-1.5 rounded-xl border border-bento-border bg-bento-panel px-3 text-xs font-semibold text-slate-300 transition-colors duration-200 hover:bg-bento-button hover:text-theme-400`}
     >
       <Home className="h-3.5 w-3.5" />
       <span className="hidden sm:inline">Esci</span>
@@ -509,7 +521,7 @@ function SettingsButton({ open, onToggle }: { open: boolean; onToggle: () => voi
       onClick={onToggle}
       aria-label="Impostazioni"
       aria-expanded={open}
-      className={`rounded-xl border border-bento-border bg-bento-panel p-2 transition-colors duration-200 hover:bg-bento-button ${
+      className={`flex ${TOOL_HEIGHT} w-9 shrink-0 items-center justify-center rounded-xl border border-bento-border bg-bento-panel transition-colors duration-200 hover:bg-bento-button ${
         open ? 'text-slate-100 ring-2 ring-theme-500/20' : 'text-slate-300'
       }`}
     >

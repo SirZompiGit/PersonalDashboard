@@ -812,19 +812,6 @@ html.theme-transitions .border-bento-border {
   animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
-@keyframes float-sparkle {
-  0% { transform: translate(0, 0) scale(0.4) rotate(0deg); opacity: 0; }
-  15% { opacity: 1; }
-  100% {
-    transform: translate(var(--tw-x, 40px), var(--tw-y, -80px)) scale(1.2) rotate(180deg);
-    opacity: 0;
-  }
-}
-
-.sparkle-particle {
-  animation: float-sparkle 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
 /* Estratti dai <style> inline di HealthBarItem, che li iniettava nel DOM una
    volta per ogni barra vita renderizzata. */
 @keyframes health-particle-float {
@@ -847,15 +834,16 @@ html.theme-transitions .border-bento-border {
   animation: health-shake 0.15s ease-in-out 2;
 }
 
-/* Estratte dai <style> inline di SharedView. */
+/* Scintille del critico, condivise fra il pannello dei dadi e lo schermo
+   condiviso. Prima i due avevano effetti diversi. */
 @keyframes dice-particle-float {
-  0% { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy))) scale(0.5); opacity: 0; }
-  20% { transform: translate(calc(-50% + var(--ox) * 1.2), calc(-50% + var(--oy) * 1.2)) scale(1.5); opacity: 1; }
-  100% { transform: translate(calc(-50% + var(--ox) * 2), calc(-50% + var(--oy) * 2)) scale(0.5); opacity: 0; }
+  0% { transform: translate(calc(-50% + var(--ox) * 0.1), calc(-50% + var(--oy) * 0.1)) scale(0.4) rotate(0deg); opacity: 0; }
+  25% { transform: translate(calc(-50% + var(--ox) * 0.6), calc(-50% + var(--oy) * 0.6)) scale(1.25) rotate(60deg); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--ox) * 1.5), calc(-50% + var(--oy) * 1.5)) scale(0.45) rotate(150deg); opacity: 0; }
 }
 
 .dice-particle {
-  animation: dice-particle-float 1.5s ease-out forwards;
+  animation: dice-particle-float 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes shared-dice-shake {

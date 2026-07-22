@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { HealthBarItem } from './HealthBarItem';
 import { CRITICAL_COLOR, DiceShape, FUMBLE_COLOR } from './DiceShape';
+import { CritSparkles } from './CritSparkles';
 import { Modal } from './ui/Modal';
 import { IconButton } from './ui/IconButton';
 import { getBarColor, groupBars } from '../lib/healthBars';
@@ -94,7 +95,8 @@ export function SharedView({
     }
   });
   const [shaking, setShaking] = useState(false);
-  const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number }[]>([]);
+  /** Istante dell'ultimo critico: serve a rimontare le scintille. */
+  const [critBurst, setCritBurst] = useState<number | null>(null);
   const [expandedNote, setExpandedNote] = useState<'campaign' | 'personal' | null>(null);
 
   const prevTimestampRef = useRef<number | null>(null);
@@ -169,14 +171,8 @@ export function SharedView({
 
     if (isCritical(lastRoll.result, lastRoll.diceType)) {
       playCritSuccessSound();
-      setSparkles(
-        Array.from({ length: 15 }, (_, index) => ({
-          id: index,
-          x: (Math.random() - 0.5) * 200,
-          y: (Math.random() - 0.5) * 200 - 50,
-        })),
-      );
-      schedule(() => setSparkles([]), 1500);
+      setCritBurst(lastRoll.timestamp);
+      schedule(() => setCritBurst(null), 1600);
     } else if (isFumble(lastRoll.result, lastRoll.diceType)) {
       playCritFailSound();
     }
@@ -526,21 +522,7 @@ export function SharedView({
                         </div>
                       )}
 
-                      {!isRollHidden &&
-                        sparkles.map((sparkle) => (
-                          <div
-                            key={sparkle.id}
-                            className="dice-particle pointer-events-none absolute top-1/2 left-1/2 z-50 text-theme-500"
-                            style={
-                              {
-                                '--ox': `${sparkle.x}px`,
-                                '--oy': `${sparkle.y}px`,
-                              } as React.CSSProperties
-                            }
-                          >
-                            <Sparkles className="h-5 w-5 opacity-80" />
-                          </div>
-                        ))}
+                      {!isRollHidden && critBurst !== null && <CritSparkles key={critBurst} />}
                     </div>
 
                     {!isRollHidden && isCritical(lastRoll.result, lastRoll.diceType) && (

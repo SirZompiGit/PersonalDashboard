@@ -22,6 +22,7 @@ import type { CampaignTheme } from '../theme';
 import { playCritFailSound, playCritSuccessSound, playRollSound } from '../utils/audio';
 import { ConfirmInline } from './ui/ConfirmInline';
 import { CRITICAL_COLOR, DiceShape, FUMBLE_COLOR } from './DiceShape';
+import { CritSparkles } from './CritSparkles';
 import { IconButton } from './ui/IconButton';
 
 const LABEL_STORAGE_KEY = 'fantasia_selected_dice_label';
@@ -69,7 +70,8 @@ export function DiceRoller({
   const [isRolling, setIsRolling] = useState(false);
   const [tempNumber, setTempNumber] = useState<number | null>(null);
   const [shaking, setShaking] = useState(false);
-  const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number }[]>([]);
+  /** Istante dell'ultimo critico: serve a rimontare le scintille. */
+  const [critBurst, setCritBurst] = useState<number | null>(null);
 
   const [selectedLabel, setSelectedLabel] = useState(() => {
     try {
@@ -125,7 +127,7 @@ export function DiceRoller({
 
     setIsRolling(true);
     setShaking(false);
-    setSparkles([]);
+    setCritBurst(null);
     playRollSound();
 
     let tick = 0;
@@ -147,18 +149,10 @@ export function DiceRoller({
 
       if (isCritical(result, selectedDice)) {
         playCritSuccessSound();
-        setSparkles(
-          Array.from({ length: 16 }, (_, index) => {
-            const angle = (index / 16) * Math.PI * 2 + (Math.random() * 0.4 - 0.2);
-            const distance = 50 + Math.random() * 120;
-            return {
-              id: index,
-              x: Math.cos(angle) * distance,
-              y: Math.sin(angle) * distance - 30,
-            };
-          }),
-        );
-        schedule(() => setSparkles([]), 1200);
+        // Il timestamp rimonta CritSparkles con una key nuova: le particelle si
+        // rigenerano anche su due critici di fila.
+        setCritBurst(Date.now());
+        schedule(() => setCritBurst(null), 1600);
       } else if (isFumble(result, selectedDice)) {
         playCritFailSound();
         setShaking(true);
@@ -437,21 +431,7 @@ export function DiceRoller({
           <div className="absolute inset-0 animate-pulse rounded-xl bg-theme-600/5 blur-xl" />
         )}
 
-        {sparkles.map((sparkle) => (
-          <div
-            key={sparkle.id}
-            className="sparkle-particle pointer-events-none absolute z-20 h-2 w-2 rounded-full bg-theme-400"
-            style={
-              {
-                left: '50%',
-                top: '50%',
-                '--tw-x': `${sparkle.x}px`,
-                '--tw-y': `${sparkle.y}px`,
-                boxShadow: `0 0 8px ${accent}, 0 0 3px #fef08a`,
-              } as React.CSSProperties
-            }
-          />
-        ))}
+        {critBurst !== null && <CritSparkles key={critBurst} />}
 
         {isRolling ? (
           <div className="flex flex-col items-center">
