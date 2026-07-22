@@ -145,10 +145,14 @@ Dalle impostazioni si sceglie fra due varianti:
 
 Il colorato non è un file per ogni colore: la versione bianca viene usata come
 **maschera** su un fondo pieno, quindi il marchio prende esattamente la tinta
-scelta e la segue anche durante la dissolvenza del cambio tema.
+scelta e la segue anche durante la dissolvenza del cambio tema. Vale con
+qualunque design, compreso quello chiaro.
 
-Il design **White** fa eccezione e usa sempre la versione nera, perché su fondo
-chiaro né l'oro né il bianco si leggerebbero.
+| File | Quando |
+|---|---|
+| `logo-fantasia.png` | Normale, su tutti i design scuri |
+| `logo-fantasia-black.png` | Normale + design **White**: l'oro su fondo chiaro sparirebbe |
+| `logo-fantasia-white.png` | Colorato, usato come maschera per il colore del tema |
 
 ### Immagini
 

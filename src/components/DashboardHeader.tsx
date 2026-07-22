@@ -376,10 +376,10 @@ export function DashboardHeader({
                   ))}
                 </div>
 
-                {style === 'white' && (
+                {style === 'white' && logoVariant === 'normal' && (
                   <p className="text-[10px] leading-snug text-slate-600">
-                    Il design chiaro usa comunque il marchio nero: sul fondo chiaro le altre
-                    versioni non si leggerebbero.
+                    Sul design chiaro il marchio normale usa la versione nera: l&apos;oro non si
+                    leggerebbe.
                   </p>
                 )}
               </div>
