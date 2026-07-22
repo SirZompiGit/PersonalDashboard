@@ -1,6 +1,14 @@
-# FANTASIA
+<div align="center">
+  <img src="public/logo-fantasia.png" alt="Fantasia" height="110" />
+</div>
 
-Plancia di comando per sessioni di gioco di ruolo da tavolo: partecipanti e ordine di turno, lancio dei dadi con etichette, barre della vita interattive, schede giocatore, appunti privati e pubblici, e uno schermo condiviso da proiettare ai giocatori.
+<p align="center">
+  Plancia di comando per sessioni di gioco di ruolo da tavolo.
+</p>
+
+---
+
+Partecipanti e ordine di turno, lancio dei dadi con etichette, barre della vita interattive, schede giocatore, appunti privati e pubblici, e uno schermo condiviso da proiettare ai giocatori.
 
 Funziona in due modalità:
 

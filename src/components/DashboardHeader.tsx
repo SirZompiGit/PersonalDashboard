@@ -38,6 +38,7 @@ import { ConfirmInline } from './ui/ConfirmInline';
 import { IconButton } from './ui/IconButton';
 import { Modal } from './ui/Modal';
 import { MediaSettings } from './MediaSettings';
+import { Wordmark } from './ui/Wordmark';
 import type { UseMediaResult } from '../hooks/useMedia';
 import type { CampaignBackup, SaveStatus } from '../hooks/useCampaignState';
 
@@ -229,10 +230,8 @@ export function DashboardHeader({
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-bento-border bg-bento-panel shadow-panel">
             <Wand2 className="h-5 w-5 stroke-[2] text-theme-500" />
           </span>
-          <div className="flex flex-col">
-            <h2 className="flex items-center gap-1.5 font-display text-lg font-extrabold uppercase tracking-wider text-slate-100">
-              Fantasia
-            </h2>
+          <div className="flex flex-col gap-0.5">
+            <Wordmark className="h-5 sm:h-6" />
             {saveIndicator}
           </div>
         </div>

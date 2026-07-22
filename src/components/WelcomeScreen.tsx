@@ -12,6 +12,7 @@
 
 import { type FormEvent, useState } from 'react';
 import { AlertTriangle, ArrowRight, Shield, Sword, Users } from 'lucide-react';
+import { Wordmark } from './ui/Wordmark';
 
 interface WelcomeScreenProps {
   onSelectLite: () => void;
@@ -52,11 +53,12 @@ export function WelcomeScreen({
 
   return (
     <div className="app-surface flex min-h-screen flex-col items-center justify-center gap-6 bg-bento-bg p-4 font-sans text-slate-100 sm:p-8">
-      <header className="text-center">
-        <h1 className="font-display text-3xl font-black uppercase tracking-[0.2em] text-slate-100 sm:text-4xl">
-          Fantasia
-        </h1>
-        <p className="mt-2 font-mono text-xs uppercase tracking-widest text-slate-500">
+      <header className="flex flex-col items-center text-center">
+        <Wordmark
+          className="h-14 max-w-[min(80vw,26rem)] object-contain sm:h-20"
+          fallbackClassName="font-display text-3xl font-black uppercase tracking-[0.2em] text-slate-100 sm:text-4xl"
+        />
+        <p className="mt-3 font-mono text-xs uppercase tracking-widest text-slate-500">
           Plancia di comando per sessioni di gioco di ruolo
         </p>
       </header>
