@@ -607,7 +607,10 @@ export default function App() {
           dispatch={dispatch}
         />
 
-        <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-12 lg:gap-6">
+        {/* `items-start`: ogni colonna prende la propria altezza. Prima era
+            `items-stretch` e il lancio dei dadi si allungava per pareggiare la
+            lista delle barre, riempiendosi di vuoto. */}
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
           <div className="lg:col-span-7">
             <HealthBarsManager
               healthBars={state.healthBars}

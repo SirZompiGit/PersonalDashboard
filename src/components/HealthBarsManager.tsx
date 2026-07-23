@@ -349,7 +349,9 @@ export function HealthBarsManager({
           hint="Crea una barra per tracciare la salute di mostri, PNG o alleati durante il combattimento."
         />
       ) : (
-        <div className="space-y-6">
+        // Oltre una certa altezza (~6 barre) la lista scorre invece di
+        // allungare all'infinito la sezione e, con lei, la colonna dei dadi.
+        <div className="max-h-[640px] space-y-6 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
           {[
             ...groups,
             ...(ungrouped.length > 0
