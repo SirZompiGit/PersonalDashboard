@@ -459,7 +459,10 @@ export function SharedView({
                 )}
               </div>
 
-              <div className="max-h-[50vh] flex-1 space-y-5 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin lg:max-h-none">
+              {/* Come nella dashboard, la lista scorre oltre un tetto invece di
+                  allungare la colonna e con lei tutta la vista. Qui il limite è
+                  più alto: ~8 barre. */}
+              <div className="max-h-[50vh] flex-1 space-y-5 overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin lg:max-h-[840px]">
                 {healthBars.length === 0 ? (
                   <p className="py-6 text-center text-sm italic text-slate-600">
                     Nessun tracciatore di salute.
