@@ -1,0 +1,925 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   FANTASIA — Fondamenta di stile
+   --------------------------------------------------------------------------
+   Il tema NON si esprime più con classi Tailwind composte a runtime
+   (`hover:${colors.hoverBg}`): quelle classi non venivano mai generate,
+   perché Tailwind estrae i nomi dal testo sorgente a build time.
+
+   Ora il tema è un set di variabili CSS scambiate su <html data-theme="...">.
+   I componenti usano classi statiche e reali — `bg-theme-600`,
+   `hover:bg-theme-500`, `focus:ring-theme-500/20` — che Tailwind genera
+   davvero e che si ricolorano da sole al cambio tema.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Proprietà di tema registrate
+   Registrarle con @property le rende INTERPOLABILI: il cambio tema diventa
+   una dissolvenza fluida dell'intera palette, senza una riga di JavaScript.
+   -------------------------------------------------------------------------- */
+
+@property --theme-400 { syntax: "<color>"; inherits: true; initial-value: #f87171; }
+@property --theme-500 { syntax: "<color>"; inherits: true; initial-value: #ef4444; }
+@property --theme-600 { syntax: "<color>"; inherits: true; initial-value: #dc2626; }
+@property --theme-950 { syntax: "<color>"; inherits: true; initial-value: #450a0a; }
+
+/* --------------------------------------------------------------------------
+   2. Le otto palette
+   Le chiavi dei quattro temi storici (crimson/emerald/sapphire/amber) e i loro
+   valori esatti non cambiano: le campagne già salvate si riaprono identiche.
+   -------------------------------------------------------------------------- */
+
+:root,
+[data-theme="crimson"] {
+  --theme-400: #f87171;
+  --theme-500: #ef4444;
+  --theme-600: #dc2626;
+  --theme-950: #450a0a;
+  --theme-rgb: 239, 68, 68;
+}
+
+[data-theme="emerald"] {
+  --theme-400: #34d399;
+  --theme-500: #10b981;
+  --theme-600: #059669;
+  --theme-950: #022c22;
+  --theme-rgb: 16, 185, 129;
+}
+
+[data-theme="sapphire"] {
+  --theme-400: #60a5fa;
+  --theme-500: #3b82f6;
+  --theme-600: #2563eb;
+  --theme-950: #172554;
+  --theme-rgb: 59, 130, 246;
+}
+
+[data-theme="amber"] {
+  --theme-400: #fbbf24;
+  --theme-500: #f59e0b;
+  --theme-600: #d97706;
+  --theme-950: #451a03;
+  --theme-rgb: 245, 158, 11;
+}
+
+[data-theme="amethyst"] {
+  --theme-400: #a78bfa;
+  --theme-500: #8b5cf6;
+  --theme-600: #7c3aed;
+  --theme-950: #2e1065;
+  --theme-rgb: 139, 92, 246;
+}
+
+[data-theme="abyss"] {
+  --theme-400: #22d3ee;
+  --theme-500: #06b6d4;
+  --theme-600: #0891b2;
+  --theme-950: #083344;
+  --theme-rgb: 6, 182, 212;
+}
+
+/* La chiave resta "rose" per non invalidare le campagne già salvate, ma il
+   colore è passato al magenta: il rosa precedente distava 10° dal rosso di
+   Vampiro e a schermo erano indistinguibili. */
+[data-theme="rose"] {
+  --theme-400: #e879f9;
+  --theme-500: #d946ef;
+  --theme-600: #c026d3;
+  --theme-950: #4a044e;
+  --theme-rgb: 217, 70, 239;
+}
+
+[data-theme="obsidian"] {
+  --theme-400: #cbd5e1;
+  --theme-500: #94a3b8;
+  --theme-600: #64748b;
+  --theme-950: #020617;
+  --theme-rgb: 148, 163, 184;
+}
+
+/* La transizione si attiva solo dopo il primo paint (classe aggiunta da
+   applyTheme), così all'avvio non si vede una dissolvenza dal colore iniziale. */
+html.theme-transitions {
+  transition:
+    --theme-400 400ms ease,
+    --theme-500 400ms ease,
+    --theme-600 400ms ease,
+    --theme-950 400ms ease;
+}
+
+/* --------------------------------------------------------------------------
+   3. Token del design system
+   -------------------------------------------------------------------------- */
+
+@theme inline {
+  /* Colori di tema: `inline` fa sì che le utility puntino alla variabile viva
+     invece di copiarne il valore, ed è ciò che rende possibile lo scambio a
+     runtime e l'interpolazione. */
+  --color-theme-400: var(--theme-400);
+  --color-theme-500: var(--theme-500);
+  --color-theme-600: var(--theme-600);
+  --color-theme-950: var(--theme-950);
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cinzel", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Superfici — scala unica. Prima gli stessi valori erano scritti a mano
+     decine di volte (`bg-[#0c0d10]` ~45 volte) accanto a grigi fuori scala. */
+  --color-bento-void: #08090c;
+  --color-bento-bg: #0c0d10;
+  --color-bento-panel: #16181d;
+  --color-bento-item: #1a1c23;
+  --color-bento-button: #21242c;
+  --color-bento-border: #2d3139;
+
+  --color-indigo-glow: rgba(79, 70, 229, 0.15);
+
+  /* Profondità — tre livelli al posto del mix casuale di shadow-md/lg/xl/2xl */
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 12px rgb(0 0 0 / 0.22);
+  --shadow-raised: 0 2px 4px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.32);
+  --shadow-overlay: 0 8px 16px rgb(0 0 0 / 0.45), 0 24px 64px rgb(0 0 0 / 0.5);
+
+  /* Animazioni */
+  --animate-fade-in: fade-in 240ms ease-out;
+  --animate-slide-up: slide-up 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-spin-slow: spin 3s linear infinite;
+}
+
+/* Durate condivise dal CSS scritto a mano qui sotto. Nei componenti si usano
+   le utility numeriche di Tailwind (`duration-200`), che sono già coerenti. */
+:root {
+  --duration-quick: 160ms;
+  --duration-base: 240ms;
+}
+
+/* --------------------------------------------------------------------------
+   3-bis. Varianti di design
+   Asse indipendente dal colore: <html data-theme="..." data-style="...">.
+
+   Tailwind v4 costruisce le utility di spaziatura, raggio e tipografia a
+   partire da variabili (`--spacing`, `--radius-*`, `--text-*`). Ridefinendo
+   quelle variabili si cambia l'intero aspetto dell'app SENZA toccare una
+   sola classe nei componenti: `p-4`, `rounded-xl` e `text-sm` continuano a
+   funzionare, ma valgono altro.
+   -------------------------------------------------------------------------- */
+
+/* ==========================================================================
+   GRIMORIO — predefinito. Angoli quasi vivi, bordi spessi, filetto d'accento
+   in cima ai pannelli, serif spaziato. L'aria di un manuale di gioco.
+   ========================================================================== */
+
+:root,
+[data-style='grimorio'] {
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 3px;
+  --radius-2xl: 4px;
+  --radius-3xl: 6px;
+}
+
+[data-style='grimorio'] .shadow-panel,
+:root .shadow-panel {
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.04),
+    0 2px 10px rgb(0 0 0 / 0.4);
+}
+
+[data-style='grimorio'] .shadow-raised,
+:root .shadow-raised {
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.06),
+    0 6px 20px rgb(0 0 0 / 0.5);
+}
+
+/* Filetto d'accento sul bordo superiore dei pannelli. */
+[data-style='grimorio'] .shadow-panel,
+[data-style='grimorio'] .shadow-raised,
+:root .shadow-panel,
+:root .shadow-raised {
+  border-top-color: color-mix(in oklab, var(--theme-500) 35%, transparent);
+}
+
+[data-style='grimorio'] .font-display,
+:root .font-display {
+  letter-spacing: 0.08em;
+}
+
+/* ==========================================================================
+   ARCANO — vetro e luce.
+   Nessun bordo netto: i pannelli sono lastre semi-trasparenti sfocate, tenute
+   insieme da aloni nel colore del tema. Angoli molto morbidi, tipografia
+   lineare e leggera. L'opposto esatto di Grimorio.
+   ========================================================================== */
+
+[data-style='arcano'] {
+  --radius-sm: 0.5rem;
+  --radius-md: 0.85rem;
+  --radius-lg: 1.1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-3xl: 2.5rem;
+
+  /* Le intestazioni abbandonano il serif: qui non siamo in un libro. */
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-bento-panel: #171a22;
+  --color-bento-item: #1c2029;
+  --color-bento-button: #232833;
+}
+
+/* Fondo con aloni diffusi, non piatto. Tenuti bassi: l'effetto vetro deve
+   suggerire la luce, non abbagliare. */
+[data-style='arcano'] body {
+  background-image:
+    radial-gradient(
+      70rem 50rem at 12% -10%,
+      color-mix(in oklab, var(--theme-600) 8%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      60rem 45rem at 105% 8%,
+      color-mix(in oklab, var(--theme-500) 5%, transparent),
+      transparent 60%
+    );
+  background-attachment: fixed;
+}
+
+/* Le lastre di vetro. */
+[data-style='arcano'] .bg-bento-panel {
+  background-color: color-mix(in oklab, var(--color-bento-panel) 58%, transparent);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+[data-style='arcano'] .bg-bento-bg {
+  background-color: color-mix(in oklab, var(--color-bento-bg) 62%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Il bordo non è una linea: è un accenno di luce. */
+[data-style='arcano'] .border-bento-border {
+  border-color: color-mix(in oklab, var(--theme-400) 16%, transparent);
+}
+
+/* La profondità viene dall'ombra scura; il colore del tema resta un velo.
+   Con aloni più intensi ogni pannello sembrava un'insegna al neon. */
+[data-style='arcano'] .shadow-panel {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 0 18px color-mix(in oklab, var(--theme-600) 7%, transparent),
+    0 8px 26px rgb(0 0 0 / 0.32);
+}
+
+[data-style='arcano'] .shadow-raised {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 0 18px color-mix(in oklab, var(--theme-500) 15%, transparent),
+    0 12px 34px rgb(0 0 0 / 0.4);
+}
+
+[data-style='arcano'] .shadow-overlay {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 0 50px color-mix(in oklab, var(--theme-600) 14%, transparent),
+    0 28px 70px rgb(0 0 0 / 0.55);
+}
+
+[data-style='arcano'] .font-display {
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+
+/* Barre della vita: capsule di vetro incassate da cui la salute filtra come
+   luce. Prima la barra era l'unico elemento con colori fissi, e restava una
+   lastra scura opaca in mezzo a pannelli trasparenti. */
+[data-style='arcano'] .hp-track {
+  background-color: color-mix(in oklab, var(--color-bento-void) 55%, transparent);
+  border-color: color-mix(in oklab, var(--theme-400) 14%, transparent);
+  box-shadow:
+    inset 0 2px 6px rgb(0 0 0 / 0.55),
+    inset 0 -1px 0 rgb(255 255 255 / 0.05);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  gap: 3px;
+  padding: 4px;
+}
+
+/* I segmenti diventano perle: bordi morbidi e un velo di luce sopra. */
+[data-style='arcano'] .hp-segment {
+  border-radius: 999px;
+  background-image: linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.18),
+    rgb(255 255 255 / 0) 60%
+  );
+}
+
+/* ==========================================================================
+   RUNICO — pietra e terminale.
+   Zero raggi, nessuna ombra, superfici piatte, bordi chiari ad alto contrasto
+   e monospace ovunque. Austero e inciso, senza una sola curva.
+   ========================================================================== */
+
+[data-style='runico'] {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+
+  /* Il monospace è il tratto distintivo: vale per ogni testo, non solo i titoli. */
+  --font-display: 'JetBrains Mono', ui-monospace, monospace;
+  --font-sans: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Superfici piatte e bordi chiari: la separazione è data dalla linea, non
+     dalla profondità. */
+  --color-bento-bg: #0b0c0f;
+  --color-bento-panel: #131519;
+  --color-bento-item: #191c22;
+  --color-bento-button: #20242b;
+  --color-bento-border: #4d5666;
+
+  --text-xs: 0.72rem;
+  --text-sm: 0.82rem;
+}
+
+/* Nessuna profondità: il design è piatto per scelta. */
+[data-style='runico'] .shadow-panel,
+[data-style='runico'] .shadow-raised {
+  box-shadow: none;
+}
+
+[data-style='runico'] .shadow-overlay {
+  box-shadow: 0 0 0 1px var(--color-bento-border);
+}
+
+/* I separatori orizzontali diventano doppio filetto inciso. */
+[data-style='runico'] .border-b {
+  border-bottom-style: double;
+  border-bottom-width: 3px;
+}
+
+[data-style='runico'] .font-display {
+  letter-spacing: 0.16em;
+  font-weight: 700;
+}
+
+/* Barre della vita: tacche incise, nessuna morbidezza. */
+[data-style='runico'] .hp-track {
+  background-color: #0f1116;
+  border-color: var(--color-bento-border);
+  box-shadow: none;
+  gap: 2px;
+  padding: 2px;
+}
+
+[data-style='runico'] .hp-segment {
+  border-radius: 0;
+}
+
+/* Il fondo dei pannelli non sfuma mai. */
+[data-style='runico'] .bg-radial,
+[data-style='runico'] .blur-3xl,
+[data-style='runico'] .blur-\[120px\] {
+  display: none;
+}
+
+/* ==========================================================================
+   WHITE — chiaro e pulito.
+   L'unico design su fondo chiaro. Superfici bianche, bordi sottili, ombre
+   morbide e diffuse, tipografia lineare. Pensato per giocare di giorno o per
+   proiettori poco potenti, dove il fondo scuro si legge male.
+
+   L'app nasce chiara su fondo scuro: qui la scala tipografica va ribaltata.
+   I token coprono le superfici, le regole più sotto coprono i testi e i pochi
+   colori Slate rimasti scritti a mano nei componenti.
+   ========================================================================== */
+
+[data-style='white'] {
+  --radius-sm: 0.25rem;
+  --radius-md: 0.4rem;
+  --radius-lg: 0.55rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+
+  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-bento-void: #ffffff;
+  --color-bento-bg: #eef0f4;
+  --color-bento-panel: #ffffff;
+  --color-bento-item: #f5f6f9;
+  --color-bento-button: #e7e9ef;
+  --color-bento-border: #d3d7e0;
+
+  --color-indigo-glow: rgba(79, 70, 229, 0.08);
+}
+
+/* Su fondo chiaro le ombre nere vanno alleggerite, altrimenti sporcano. */
+[data-style='white'] .shadow-panel {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06), 0 2px 8px rgb(15 23 42 / 0.05);
+}
+
+[data-style='white'] .shadow-raised {
+  box-shadow: 0 2px 4px rgb(15 23 42 / 0.08), 0 8px 20px rgb(15 23 42 / 0.09);
+}
+
+[data-style='white'] .shadow-overlay {
+  box-shadow: 0 10px 20px rgb(15 23 42 / 0.12), 0 30px 70px rgb(15 23 42 / 0.18);
+}
+
+[data-style='white'] .font-display {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Inversione della scala tipografica. */
+[data-style='white'] .text-white { color: #0f172a; }
+[data-style='white'] .text-slate-100 { color: #111827; }
+[data-style='white'] .text-slate-200 { color: #1f2937; }
+[data-style='white'] .text-slate-300 { color: #334155; }
+[data-style='white'] .text-slate-400 { color: #52607a; }
+[data-style='white'] .text-slate-500 { color: #6b7688; }
+[data-style='white'] .text-slate-600 { color: #8b94a5; }
+[data-style='white'] .text-slate-700 { color: #a3aab8; }
+
+[data-style='white'] .hover\:text-slate-100:hover,
+[data-style='white'] .hover\:text-white:hover { color: #0f172a; }
+[data-style='white'] .hover\:text-slate-200:hover { color: #1f2937; }
+[data-style='white'] .hover\:text-slate-300:hover { color: #334155; }
+
+[data-style='white'] .placeholder-slate-500::placeholder,
+[data-style='white'] .placeholder-slate-600::placeholder,
+[data-style='white'] .placeholder\:text-slate-600::placeholder { color: #9aa3b2; }
+
+[data-style='white'] .bg-slate-700 { background-color: #dfe3ea; }
+[data-style='white'] .bg-slate-800 { background-color: #e9ecf1; }
+[data-style='white'] .bg-slate-900 { background-color: #f2f4f7; }
+[data-style='white'] .bg-slate-800\/50 { background-color: rgb(233 236 241 / 0.7); }
+[data-style='white'] .bg-slate-900\/50 { background-color: rgb(210 216 226 / 0.5); }
+[data-style='white'] .hover\:bg-slate-600:hover,
+[data-style='white'] .hover\:bg-slate-700:hover { background-color: #d4d9e2; }
+
+[data-style='white'] .border-slate-700,
+[data-style='white'] .border-slate-800,
+[data-style='white'] .border-slate-700\/50 { border-color: #d9dde5; }
+[data-style='white'] .border-white { border-color: #0f172a; }
+[data-style='white'] .hover\:border-slate-500:hover,
+[data-style='white'] .hover\:border-slate-600:hover { border-color: #a9b1c1; }
+
+/* Il colore del tema va scurito per restare leggibile su fondo chiaro. */
+[data-style='white'] .text-theme-400,
+[data-style='white'] .text-theme-500 { color: var(--theme-600); }
+
+/* La barra della vita diventa una scanalatura chiara. */
+[data-style='white'] .hp-track {
+  background-color: #e4e7ee;
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.08);
+}
+
+/* ==========================================================================
+   RETRO — cabinato anni '80.
+   Qui non cambiano solo forme e colori: cambia il CARATTERE dell'interfaccia.
+   Press Start 2P sui titoli e VT323 su tutto il resto ribaltano la sensazione
+   dell'app più di qualsiasi raggio o ombra. Sopra a tutto passa una superficie
+   CRT con scanline e vignettatura, che non esiste in nessun altro design.
+   ========================================================================== */
+
+[data-style='retro'] {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+
+  --font-display: 'Press Start 2P', ui-monospace, monospace;
+  --font-sans: 'VT323', ui-monospace, monospace;
+  --font-mono: 'VT323', ui-monospace, monospace;
+
+  /* VT323 disegna piccolo: la scala va alzata per restare leggibile. */
+  --text-xs: 0.95rem;
+  --text-sm: 1.05rem;
+  --text-base: 1.2rem;
+  --text-lg: 1.35rem;
+  --text-xl: 1.55rem;
+  --text-2xl: 1.85rem;
+  --text-3xl: 2.2rem;
+  --text-4xl: 2.7rem;
+
+  --color-bento-void: #05060a;
+  --color-bento-bg: #0a0c14;
+  --color-bento-panel: #141826;
+  --color-bento-item: #1c2133;
+  --color-bento-button: #262c42;
+  --color-bento-border: #5a6486;
+}
+
+/* Press Start 2P è larghissimo: a piena dimensione un titolo lungo sfonderebbe
+   il pannello. `em` lo rimpicciolisce in proporzione ovunque, senza dover
+   toccare una sola classe nei componenti. */
+[data-style='retro'] .font-display {
+  font-size: 0.72em;
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+
+/* I numeri grandi fanno eccezione: sono corti, non rischiano di sfondare, e
+   rimpicciolirli li rendeva illeggibili proprio dove devono spiccare.
+   Due classi battono una: questa regola vince su quella qui sopra. */
+[data-style='retro'] .font-display.numeric-display {
+  font-size: 0.95em;
+}
+
+/* Cornici spesse e ombre dure: nessuna sfumatura, come una grafica a 8 bit. */
+[data-style='retro'] .border {
+  border-width: 3px;
+}
+
+[data-style='retro'] .shadow-panel {
+  box-shadow: 4px 4px 0 0 rgb(0 0 0 / 0.55);
+}
+
+[data-style='retro'] .shadow-raised {
+  box-shadow:
+    4px 4px 0 0 rgb(0 0 0 / 0.6),
+    0 0 0 1px color-mix(in oklab, var(--theme-500) 40%, transparent);
+}
+
+[data-style='retro'] .shadow-overlay {
+  box-shadow:
+    8px 8px 0 0 rgb(0 0 0 / 0.7),
+    0 0 0 3px var(--color-bento-border);
+}
+
+/* I pulsanti si "abbassano" alla pressione, come un tasto di un cabinato. */
+[data-style='retro'] button:active:not(:disabled) {
+  transform: translate(2px, 2px);
+}
+
+/* Le immagini non vengono ammorbidite dall'interpolazione. */
+[data-style='retro'] img {
+  image-rendering: pixelated;
+}
+
+/* Barra della vita: tacche squadrate e piene, come le vite di un arcade. */
+[data-style='retro'] .hp-track {
+  background-color: #05060a;
+  border-color: var(--color-bento-border);
+  box-shadow: inset 2px 2px 0 0 rgb(0 0 0 / 0.6);
+  gap: 3px;
+  padding: 3px;
+}
+
+[data-style='retro'] .hp-segment {
+  border-radius: 0;
+  background-image: linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 0.35) 0 35%,
+    rgb(0 0 0 / 0.15) 35% 100%
+  );
+}
+
+/* Il fondo è una griglia da vettoriale anni '80. */
+[data-style='retro'] body {
+  background-image:
+    linear-gradient(
+      color-mix(in oklab, var(--theme-600) 7%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--theme-600) 7%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 44px 44px;
+  background-attachment: fixed;
+}
+
+/*
+ * La superficie CRT: scanline e vignettatura sopra l'intera interfaccia,
+ * modali compresi. È l'elemento che nessun altro design ha, ed è ciò che fa
+ * sembrare Retro un altro programma invece che lo stesso con altri colori.
+ */
+[data-style='retro'] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      rgb(0 0 0 / 0.16) 0 1px,
+      transparent 1px 3px
+    ),
+    radial-gradient(
+      120% 120% at 50% 50%,
+      transparent 55%,
+      rgb(0 0 0 / 0.35) 100%
+    );
+}
+
+/* ==========================================================================
+   Sfondo personalizzato
+   Impostato dall'utente, indipendente dal design scelto. Vive su un livello
+   fisso dietro l'app: `.app-surface` (il contenitore radice di ogni schermata)
+   si fa da parte per lasciarlo vedere, mentre i pannelli mantengono la propria
+   superficie e il testo resta leggibile.
+   ========================================================================== */
+
+html.has-background body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--bg-image);
+  background-repeat: var(--bg-repeat, no-repeat);
+  background-size: var(--bg-size, cover);
+  background-position: center;
+  opacity: var(--bg-opacity, 1);
+  filter: blur(var(--bg-blur, 0px));
+  /* La sfocatura consuma i bordi dell'immagine: si allarga oltre il viewport
+     per non lasciare una cornice sfumata sui lati. */
+  transform: scale(1.08);
+}
+
+html.has-background .app-surface {
+  position: relative;
+  z-index: 1;
+  background-color: transparent;
+}
+
+/* La transizione fra design tocca misure e superfici, non solo colori. */
+html.theme-transitions [class*='rounded'],
+html.theme-transitions .shadow-panel,
+html.theme-transitions .shadow-raised,
+html.theme-transitions .border-bento-border {
+  transition:
+    border-radius 300ms ease,
+    box-shadow 300ms ease,
+    border-color 300ms ease,
+    background-color 300ms ease;
+}
+
+/* --------------------------------------------------------------------------
+   4. Base
+   -------------------------------------------------------------------------- */
+
+@layer base {
+  body {
+    @apply bg-bento-bg text-slate-100 font-sans antialiased;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--theme-500) 30%, transparent);
+    color: #f8fafc;
+  }
+
+  /* Anello di focus coerente su tutto ciò che è interattivo. Prima non
+     esisteva: `focus:${colors.ring}` non generava alcuna classe. */
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid var(--theme-500);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+  }
+
+  /* Scrollbar legata al tema — prima l'hover era rosso hard-coded e restava
+     rosso anche in tema Druido. */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background-color: var(--color-bento-bg);
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-bento-border);
+    border-radius: 9999px;
+    transition: background-color var(--duration-quick) ease;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--theme-500) 55%, transparent);
+  }
+
+  * {
+    scrollbar-color: var(--color-bento-border) var(--color-bento-bg);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Utility mancanti
+   Queste classi erano usate in tutta l'app ma non esistevano da nessuna parte:
+   non erano definite qui e nessun plugin le forniva. Erano no-op silenziosi.
+   -------------------------------------------------------------------------- */
+
+@utility scrollbar-thin {
+  scrollbar-width: thin;
+  &::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+}
+
+@utility scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Sfumature ai bordi delle liste a scorrimento orizzontale (storico lanci,
+   lanci dei giocatori): segnalano che c'è altro contenuto oltre il bordo. */
+@utility scroll-fade-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 1.25rem,
+    #000 calc(100% - 1.25rem),
+    transparent 100%
+  );
+}
+
+/* I controlli che compaiono all'hover restano nascosti col mouse, ma devono
+   essere sempre visibili dove l'hover non esiste (touch). Prima i pulsanti
+   ±HP erano `opacity-0 group-hover:opacity-100`: su telefono e tablet
+   invisibili e inutilizzabili. */
+@utility touch-visible {
+  @media (hover: none) {
+    opacity: 1 !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   6. Animazioni
+   -------------------------------------------------------------------------- */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Il dado rimbalza mentre rotola: la rotazione da sola sembrava una girandola,
+   il salto verticale le dà il peso di un dado che rotola sul tavolo. */
+@keyframes dice-tumble {
+  0% { transform: translateY(6%) rotate(0deg) scale(0.9); }
+  25% { transform: translateY(-9%) rotate(100deg) scale(0.97); }
+  50% { transform: translateY(6%) rotate(180deg) scale(0.88); }
+  75% { transform: translateY(-6%) rotate(280deg) scale(0.96); }
+  100% { transform: translateY(6%) rotate(360deg) scale(0.9); }
+}
+
+.dice-tumble {
+  animation: dice-tumble 0.36s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+/* L'esito arriva secco, con un solo contraccolpo. Resta più grande della
+   sagoma che ruotava: è il momento che conta. */
+@keyframes dice-settle {
+  0% { transform: rotate(-22deg) scale(0.5); opacity: 0; }
+  45% { transform: rotate(6deg) scale(1.14); opacity: 1; }
+  72% { transform: rotate(-2deg) scale(0.96); }
+  100% { transform: rotate(0deg) scale(1); opacity: 1; }
+}
+
+.dice-settle {
+  animation: dice-settle 0.32s cubic-bezier(0.22, 1.2, 0.36, 1) forwards;
+  transform-origin: 50% 50%;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.shake-animation {
+  animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Estratti dai <style> inline di HealthBarItem, che li iniettava nel DOM una
+   volta per ogni barra vita renderizzata. */
+@keyframes health-particle-float {
+  0% { transform: translate(calc(-50% + var(--ox)), -50%) scale(0.5); opacity: 0; }
+  20% { transform: translate(calc(-50% + var(--ox)), -120%) scale(1.3); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--ox)), -250%) scale(0.8); opacity: 0; }
+}
+
+.health-particle {
+  animation: health-particle-float 1s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes health-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.health-shake {
+  animation: health-shake 0.15s ease-in-out 2;
+}
+
+/* Scintille del critico, condivise fra il pannello dei dadi e lo schermo
+   condiviso. Prima i due avevano effetti diversi. */
+@keyframes dice-particle-float {
+  0% { transform: translate(calc(-50% + var(--ox) * 0.1), calc(-50% + var(--oy) * 0.1)) scale(0.4) rotate(0deg); opacity: 0; }
+  25% { transform: translate(calc(-50% + var(--ox) * 0.6), calc(-50% + var(--oy) * 0.6)) scale(1.25) rotate(60deg); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--ox) * 1.5), calc(-50% + var(--oy) * 1.5)) scale(0.45) rotate(150deg); opacity: 0; }
+}
+
+.dice-particle {
+  animation: dice-particle-float 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes shared-dice-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(-4px, 4px) rotate(-5deg); }
+  50% { transform: translate(4px, -4px) rotate(5deg); }
+  75% { transform: translate(-4px, -4px) rotate(-5deg); }
+}
+
+.shared-dice-shake {
+  animation: shared-dice-shake 0.3s ease-in-out;
+}
+
+/* Allerta sotto il 25% dei punti ferita.
+   Usa `outline` e non `box-shadow`: l'ombra è già ridefinita da ogni design e
+   animarla cancellerebbe gli incassi di Arcano. `--hp-color` arriva dal
+   componente, così l'alone ha il colore reale della barra. */
+@keyframes hp-alert-pulse {
+  0%,
+  100% {
+    outline-color: color-mix(in oklab, var(--hp-color, #ef4444) 0%, transparent);
+  }
+  50% {
+    outline-color: color-mix(in oklab, var(--hp-color, #ef4444) 75%, transparent);
+  }
+}
+
+.hp-track.is-alert {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  animation: hp-alert-pulse 1.3s ease-in-out infinite;
+}
+
+/* --------------------------------------------------------------------------
+   Tracce sottili delle risorse.
+
+   Ogni design impone alla barra della vita misure pensate per i suoi 32 pixel
+   d'altezza. Su una traccia da 10 non resta nulla da riempire:
+
+     arcano  4px di padding per lato        →  10 - 2 - 8  =  0px
+     retro   3px di padding + cornice 3px   →  10 - 6 - 6  = -2px
+
+   Non era un riempimento poco visibile: era largo zero. Qui le metriche
+   tornano proporzionate, una volta sola per tutti i design — compresi quelli
+   che verranno, che altrimenti ripeterebbero lo stesso errore.
+
+   Il carattere resta intatto: le perle di Arcano e gli spigoli di Retro stanno
+   su `.hp-segment`, non qui.
+
+   Specificità: `.hp-track.hp-track--thin` pareggia `[data-style='x'] .hp-track`
+   e `[data-style='retro'] .border`, quindi questa regola deve restare DOPO
+   tutti i blocchi dei design. Spostarla più in alto la disattiva in silenzio.
+   -------------------------------------------------------------------------- */
+.hp-track.hp-track--thin {
+  border-width: 1px;
+  padding: 1px;
+  gap: 1px;
+  /* Un'ombra incassata su dieci pixel non si legge, mangia il colore e basta:
+     il bordo definisce già il contorno. */
+  box-shadow: none;
+  /* Sfocare lo sfondo dietro una scheggia da 10px costa e non si vede. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.85; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bento-panel) 0%,
+    var(--color-bento-button) 50%,
+    var(--color-bento-panel) 100%
+  );
+  animation: skeleton-pulse 1.6s ease-in-out infinite;
+}

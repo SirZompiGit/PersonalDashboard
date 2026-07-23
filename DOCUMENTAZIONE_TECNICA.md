@@ -131,25 +131,13 @@ Le immagini caricate vengono ridisegnate su canvas (1920px lo sfondo, 1280px la 
 
 ## 4. Dadi
 
-d2 (tondo), d3, d4, d6, d8, d10, d12, d20. `lib/dice.ts` centralizza tutto: `parseSides`, `rollDie`, `isCritical`, `isFumble`.
+d3, d4, d6, d8, d10, d12, d20. `lib/dice.ts` centralizza tutto: `parseSides`, `rollDie`, `isCritical`, `isFumble`.
 
 - `rollDie` usa `crypto.getRandomValues` con rifiuto della coda non divisibile, così i valori bassi non sono favoriti.
-- Il **d2** è disegnato come cerchio, non come poligono: `DiceShape` ha un ramo dedicato che salta la geometria di baricentro e inradius.
+- **Etichette**: create, rinominate ed eliminate dall'utente; quella selezionata sopravvive al ricaricamento.
 - **Lanci nascosti**: `isRollHidden` calcola il risultato ma lo maschera nello schermo condiviso.
 - **Storico**: coda degli ultimi 20 lanci, il più recente evidenziato.
 - Critico e fallimento hanno effetti sonori e visivi dedicati.
-
-### Dado+ (opzionale)
-
-Attivo, sblocca tre extra; spento, resta il solo dado singolo senza etichette.
-
-| Extra | Come funziona |
-|---|---|
-| Etichette | Create, rinominate ed eliminate dall'utente; quella selezionata sopravvive al ricaricamento |
-| Vantaggio / Svantaggio | Due dadi, si tiene il più alto o il più basso. Resta una faccia sola, quindi il critico vale ancora |
-| Dadi multipli (NdX) | Somma di più dadi dello stesso tipo. Una somma **non** fa critico: `scoresCrit(mode)` lo sopprime |
-
-Ogni tiro produce `{ result, detail?, mode? }`: `detail` è la scomposizione leggibile ("4 + 2 + 5", "15 / 8"), `mode` distingue i casi. Sono campi **additivi** di `RollResult`, assenti sui lanci normali. Quando Dado+ è attivo valgono anche per il giocatore di turno.
 
 ## 5. Barre della vita
 
@@ -172,14 +160,6 @@ Una barra può portare **fino a due risorse**: mana, scudo, frenesia, slot incan
 
 Il limite di due non è tecnico ma di leggibilità: la barra della vita deve restare l'informazione dominante.
 
-### Effetti di stato
-
-Fino a **cinque** targhette con nome e colore (`statusEffects?: StatusEffect[]`, additivo e assente quando vuoto). Avvelenato, Stordito, Furioso. Ogni effetto ha il suo interruttore pubblico/nascosto, come le risorse. In orizzontale sono pastiglie col nome accanto alla barra; in verticale, dove non c'è spazio, solo le iniziali colorate.
-
-### Riordino
-
-Una **maniglia** trascinabile (l'unico elemento `draggable`, così non tocca il trascinamento degli HP) più **frecce su/giù** come alternativa da tocco e tastiera. `MOVE_HEALTH_BAR` e `REORDER_HEALTH_BAR` spostano **solo dentro il gruppo effettivo**: un gruppo che non esiste più conta come "Senza Gruppo", coerente con le sezioni mostrate.
-
 **Interazione** — Pointer Events con `setPointerCapture`: un solo percorso di codice per mouse, dito e penna. Si può toccare un punto della barra, trascinare, usare i pulsanti ±1/±5, oppure le frecce da tastiera (`Shift` per passi da 5). La barra è un `role="slider"` con i relativi attributi ARIA.
 
 **Rendering** — fino a 60 punti la barra disegna un segmento per punto; oltre, passa a riempimento continuo. Il limite massimo è 999.
@@ -188,19 +168,11 @@ Una **maniglia** trascinabile (l'unico elemento `draggable`, così non tocca il 
 
 **Effetti** — durante un trascinamento gli HP cambiano molte volte al secondo: i suoni sono limitati a uno ogni 70 ms e le particelle di danno confluiscono in una sola con il totale accumulato.
 
-## 5-bis. Statistiche
-
-Meccanica opzionale (`statsEnabled`). Sei valori per personaggio (`Player.stats?: number[]`, additivo e assente finché non toccato), coi nomi rinominabili a livello di campagna (`statLabels`, sempre sei voci). Solo un numero, senza modificatore. `lib/stats.ts` centralizza limiti (`clampStat`, 0–99), default e sigle; `StatBlock` è l'unico componente per i tre posti in cui compaiono:
-
-- **scheda PG** in dashboard — griglia 3×2 modificabile dal master in tempo reale;
-- **condivisione** — sola lettura, e **solo** per il giocatore di turno;
-- **scheda personale del giocatore** in multiplayer — sempre visibile, modificabile se il master ha passato il controllo.
-
 ## 6. Schermo condiviso
 
 Componente isolato, apribile in tre modi: anteprima nella stessa pagina, finestra separata (`?shared=true`) per il secondo monitor, o vista dei giocatori collegati (`?shared=true&room=PIN`).
 
-Mostra: ordine di turno con inventario, bonus e statistiche del giocatore attivo, stato della salute (orizzontale o verticale, la scelta si ricorda), ultimo lancio del master, lanci dei giocatori, appunti campagna, appunti personali del giocatore e programmazione della sessione.
+Mostra: ordine di turno con inventario e bonus del giocatore attivo, stato della salute (orizzontale o verticale, la scelta si ricorda), ultimo lancio del master, lanci dei giocatori, appunti campagna, appunti personali del giocatore e programmazione della sessione.
 
 I gruppi di barre si possono **chiudere** anche qui, come nella dashboard. Lo stato usa una chiave distinta (`fantasia_shared_collapsed_groups`) apposta: è una preferenza di *chi guarda*, non della campagna, quindi il master che chiude un gruppo per sé non lo chiude a tutti i giocatori.
 
@@ -219,7 +191,7 @@ Firebase Realtime Database. Struttura **invariata** rispetto alle versioni prece
 ```
 rooms/{pin}
   campaign
-  users/{userId}    → { id, name, assignedPlayerId, notes, sheet? }
+  users/{userId}    → { id, name, assignedPlayerId, notes }
   participantRolls  → array, massimo 10 elementi
 ```
 
@@ -228,9 +200,6 @@ rooms/{pin}
 | Ciclo di vita | `useRoom` apre e **chiude** le sottoscrizioni; la sessione è in `sessionStorage` e riprende dopo un F5 |
 | Chiusura stanza | Solo dal pulsante esplicito. Ricaricare la pagina non la distrugge |
 | Utenti | `onDisconnect().remove()` sul nodo utente: è il server a ripulire, e viene riarmato dopo ogni riconnessione |
-| Solo il turno tira | Un giocatore lancia i dadi solo se il suo personaggio è quello attivo; altrimenti vede "Non è il tuo turno" |
-| Controllo ai giocatori | Interruttore globale (`playersCanEdit`, icona zaino). Attivo, il giocatore modifica la propria scheda e la scrive come **snapshot completo** su `users/{userId}/sheet` |
-| Fusione | Il master — unico a scrivere `campaign` — copia lo `sheet` nel personaggio assegnato **solo quando quel campo cambia** (tracciato per utente), mai al cambio della campagna: così una sua modifica non viene mai sovrascritta. Alla revoca lo `sheet` viene rimosso |
 | Lanci | `runTransaction` sul nodo array: atomico, senza cambiare la forma del dato |
 | Identità dei lanci | Etichetta `userId\|userName\|label`, codificata e letta solo da `lib/participantRolls` |
 | Assenza di `.env` | La modalità X è disattivata con un messaggio; la Lite non ne risente |
