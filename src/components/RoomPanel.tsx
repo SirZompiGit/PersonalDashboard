@@ -9,6 +9,7 @@ import type { Player, RollResult } from '../types';
 import { type RoomUser, updateUser } from '../firebaseUtils';
 import { Check, Copy, Link as LinkIcon, Users, Wifi, WifiOff } from 'lucide-react';
 import { ConfirmInline } from './ui/ConfirmInline';
+import { d2FaceText } from '../lib/dice';
 import { decodeRollLabel, resolveRollerName } from '../lib/participantRolls';
 
 /** Lanci dei giocatori mostrati: una striscia, senza andare a capo. */
@@ -21,6 +22,8 @@ interface RoomPanelProps {
   players: Player[];
   online: boolean;
   onCloseRoom: () => void;
+  /** Etichette delle facce del d2 (es. "Testa" / "Croce"). */
+  d2Labels: string[];
 }
 
 export function RoomPanel({
@@ -30,6 +33,7 @@ export function RoomPanel({
   players,
   online,
   onCloseRoom,
+  d2Labels,
 }: RoomPanelProps) {
   const [copied, setCopied] = useState<'pin' | 'link' | null>(null);
   const [confirmingClose, setConfirmingClose] = useState(false);
@@ -222,8 +226,13 @@ export function RoomPanel({
                     </span>
                   </div>
 
-                  <span className="numeric-display py-2 text-center font-display text-4xl font-black text-white">
-                    {roll.result}
+                  <span
+                    className={`numeric-display max-w-full truncate px-1 py-2 text-center font-display font-black text-white ${
+                      d2FaceText(roll.diceType, roll.result, d2Labels) ? 'text-xl' : 'text-4xl'
+                    }`}
+                    title={d2FaceText(roll.diceType, roll.result, d2Labels) ?? undefined}
+                  >
+                    {d2FaceText(roll.diceType, roll.result, d2Labels) ?? roll.result}
                   </span>
 
                   {decoded.label && (

@@ -589,6 +589,7 @@ export default function App() {
           users={room.roomState?.users ?? {}}
           participantRolls={room.roomState?.participantRolls ?? []}
           players={state.players}
+          d2Labels={state.d2Labels}
           online={room.online}
           onCloseRoom={() => {
             room.closeRoom();
