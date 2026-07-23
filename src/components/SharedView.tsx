@@ -33,7 +33,8 @@ import {
 } from 'lucide-react';
 import { HealthBarItem } from './HealthBarItem';
 import { StatBlock } from './StatBlock';
-import { CRITICAL_COLOR, DiceShape, FUMBLE_COLOR } from './DiceShape';
+import { CRITICAL_COLOR, FUMBLE_COLOR } from './DiceShape';
+import { DiceResult } from './DiceResult';
 import { CritSparkles } from './CritSparkles';
 import { Modal } from './ui/Modal';
 import { IconButton } from './ui/IconButton';
@@ -534,8 +535,18 @@ export function SharedView({
                       shaking ? 'shared-dice-shake' : ''
                     }`}
                   >
-                    <span className="mb-1 block font-mono text-xs uppercase tracking-widest text-slate-500">
+                    <span className="mb-1 flex flex-wrap items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-widest text-slate-500">
                       Dado {lastRoll.diceType}
+                      {lastRoll.mode === 'advantage' && (
+                        <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
+                          Vantaggio
+                        </span>
+                      )}
+                      {lastRoll.mode === 'disadvantage' && (
+                        <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold text-red-400">
+                          Svantaggio
+                        </span>
+                      )}
                     </span>
 
                     {lastRoll.label && (
@@ -545,15 +556,12 @@ export function SharedView({
                     )}
 
                     <div className="relative my-2">
-                      <DiceShape
-                        key={lastRoll.timestamp}
-                        diceType={lastRoll.diceType}
-                        value={lastRoll.result}
-                        state="result"
+                      <DiceResult
+                        roll={lastRoll}
                         accent={accent}
                         reveal={isRollHidden ? 'hidden' : 'full'}
-                        outcome={masterCrit ? 'critical' : masterFumble ? 'fumble' : null}
-                        className="h-28 w-28 sm:h-32 sm:w-32 lg:h-40 lg:w-40"
+                        bigClass="h-28 w-28 sm:h-32 sm:w-32 lg:h-40 lg:w-40"
+                        smallClass="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24"
                       />
 
                       {isRollHidden && (
@@ -566,11 +574,6 @@ export function SharedView({
 
                       {!isRollHidden && critBurst !== null && <CritSparkles key={critBurst} />}
                     </div>
-
-                    {/* Dettaglio del tiro Dado+: "4 + 2 + 5" o "15 / 8". */}
-                    {!isRollHidden && lastRoll.detail && (
-                      <span className="font-mono text-[11px] text-slate-500">{lastRoll.detail}</span>
-                    )}
 
                     {!isRollHidden && masterCrit && (
                       <div

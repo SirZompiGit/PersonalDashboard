@@ -34,6 +34,7 @@ import type { CampaignTheme } from '../theme';
 import { playCritFailSound, playCritSuccessSound, playRollSound } from '../utils/audio';
 import { ConfirmInline } from './ui/ConfirmInline';
 import { CRITICAL_COLOR, DiceShape, FUMBLE_COLOR } from './DiceShape';
+import { DiceResult } from './DiceResult';
 import { CritSparkles } from './CritSparkles';
 import { IconButton } from './ui/IconButton';
 
@@ -99,6 +100,17 @@ export function DiceRoller({
   const [shaking, setShaking] = useState(false);
   /** Istante dell'ultimo critico: serve a rimontare le scintille. */
   const [critBurst, setCritBurst] = useState<number | null>(null);
+
+  /**
+   * Ultimo lancio fatto qui, mostrato subito. Per il giocatore `lastRoll`
+   * arriva dal database dopo un giro di rete: senza questo, appena finita
+   * l'animazione il risultato sparirebbe fino all'eco. Viene azzerato quando un
+   * nuovo `lastRoll` arriva (l'eco, o un annulla del master), così non resta mai
+   * indietro rispetto alla verità.
+   */
+  const [localRoll, setLocalRoll] = useState<RollResult | null>(null);
+  useEffect(() => setLocalRoll(null), [lastRoll]);
+  const shownRoll = localRoll ?? lastRoll;
 
   // Controlli Dado+. Vantaggio/svantaggio valgono su una faccia sola; con più
   // dadi il tiro diventa una somma e la scelta di vantaggio si spegne.
@@ -190,6 +202,15 @@ export function DiceRoller({
 
       setTempNumber(outcome.result);
       setIsRolling(false);
+      // Mostrato subito, senza aspettare l'eco dal database.
+      setLocalRoll({
+        diceType: selectedDice,
+        result: outcome.result,
+        timestamp: Date.now(),
+        label,
+        detail: outcome.detail,
+        mode: outcome.mode,
+      });
       onRoll({
         diceType: selectedDice,
         result: outcome.result,
@@ -250,9 +271,9 @@ export function DiceRoller({
 
   const canManageLabels = Boolean(onAddDiceLabel || onRenameDiceLabel || onDeleteDiceLabel);
   // Su una somma il critico non conta: il colore e le scintille restano spenti.
-  const canCrit = lastRoll ? scoresCrit(lastRoll.mode) : false;
-  const critical = lastRoll ? canCrit && isCritical(lastRoll.result, lastRoll.diceType) : false;
-  const fumble = lastRoll ? canCrit && isFumble(lastRoll.result, lastRoll.diceType) : false;
+  const canCrit = shownRoll ? scoresCrit(shownRoll.mode) : false;
+  const critical = shownRoll ? canCrit && isCritical(shownRoll.result, shownRoll.diceType) : false;
+  const fumble = shownRoll ? canCrit && isFumble(shownRoll.result, shownRoll.diceType) : false;
 
   return (
     <section
@@ -527,7 +548,7 @@ export function DiceRoller({
       )}
 
       <div className="relative mb-5 flex min-h-[140px] flex-grow flex-col items-center justify-center rounded-xl border border-bento-border bg-bento-bg p-4 sm:p-6">
-        {onToggleRollVisibility && lastRoll && !isRolling && (
+        {onToggleRollVisibility && shownRoll && !isRolling && (
           <div className="absolute top-2 right-2">
             <IconButton
               label={isRollHidden ? 'Mostra il lancio ai giocatori' : 'Nascondi il lancio'}
@@ -561,44 +582,37 @@ export function DiceRoller({
               Rotolando...
             </span>
           </div>
-        ) : lastRoll ? (
+        ) : shownRoll ? (
           <div className="relative flex flex-col items-center text-center">
             <span className="mb-1 flex flex-wrap items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-widest text-slate-500">
-              Risultato {lastRoll.diceType}
-              {lastRoll.mode === 'advantage' && (
+              Risultato {shownRoll.diceType}
+              {shownRoll.mode === 'advantage' && (
                 <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
                   Vantaggio
                 </span>
               )}
-              {lastRoll.mode === 'disadvantage' && (
+              {shownRoll.mode === 'disadvantage' && (
                 <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold text-red-400">
                   Svantaggio
                 </span>
               )}
-              {lastRoll.label && (
+              {shownRoll.label && (
                 <span className="rounded border border-bento-border bg-bento-void px-1.5 py-0.5 text-[10px] font-bold text-slate-400">
-                  {lastRoll.label}
+                  {shownRoll.label}
                 </span>
               )}
             </span>
 
             {/* Il master vede sempre il proprio risultato: se è nascosto ai
-                giocatori resta visibile ma spento, non sostituito da un `?`. */}
-            <DiceShape
-              key={lastRoll.timestamp}
-              diceType={lastRoll.diceType}
-              value={lastRoll.result}
-              state="result"
+                giocatori resta visibile ma spento, non sostituito da un `?`.
+                Con più dadi mostra i singoli dadi tirati. */}
+            <DiceResult
+              roll={shownRoll}
               accent={accent}
               reveal={isRollHidden ? 'dimmed' : 'full'}
-              outcome={critical ? 'critical' : fumble ? 'fumble' : null}
-              className="h-36 w-36 sm:h-40 sm:w-40"
+              bigClass="h-36 w-36 sm:h-40 sm:w-40"
+              smallClass="h-20 w-20 sm:h-24 sm:w-24"
             />
-
-            {/* Scomposizione del tiro Dado+: "4 + 2 + 5" o "15 / 8". */}
-            {lastRoll.detail && !isRollHidden && (
-              <span className="mt-1 font-mono text-[11px] text-slate-500">{lastRoll.detail}</span>
-            )}
 
             {/* Le etichette prendono lo stesso colore del dado: oro e rosso
                 non seguono il tema, e lasciarle nel colore del tema le avrebbe

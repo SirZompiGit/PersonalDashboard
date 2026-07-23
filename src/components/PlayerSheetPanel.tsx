@@ -85,37 +85,15 @@ export function PlayerSheetPanel({
     </div>
   );
 
-  const grid = editable ? (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <EditableList
-        title="Inventario"
-        items={inventory}
-        placeholder="Nuovo oggetto..."
-        onChange={setInventory}
-      />
-      <EditableList
-        title="Bonus"
-        items={bonus}
-        placeholder="Nuovo bonus..."
-        onChange={setBonus}
-      />
-    </div>
-  ) : (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {readOnlyList('Inventario', player.inventory, false)}
-      {readOnlyList('Bonus', player.bonus, true)}
-    </div>
-  );
-
   // In sola lettura le statistiche seguono la campagna del master; in modifica
   // seguono la bozza locale.
   const shownStats = editable ? stats : player.stats;
 
   return (
-    <section className="rounded-xl border border-bento-border bg-bento-panel p-4 shadow-panel sm:p-5">
-      <div className="mb-3 flex items-center justify-between gap-2 border-b border-bento-border pb-3">
-        <h2 className="flex min-w-0 items-center gap-2 font-display text-sm font-extrabold uppercase tracking-wider text-slate-200">
-          <Backpack className="h-4 w-4 shrink-0 text-theme-500" />
+    <section className="rounded-xl border border-bento-border bg-bento-panel p-3 shadow-panel sm:p-4">
+      <div className="mb-2 flex items-center justify-between gap-2 border-b border-bento-border pb-2">
+        <h2 className="flex min-w-0 items-center gap-2 font-display text-xs font-extrabold uppercase tracking-wider text-slate-300">
+          <Backpack className="h-3.5 w-3.5 shrink-0 text-theme-500" />
           <span className="truncate">La tua scheda — {player.name}</span>
         </h2>
         {editable && (
@@ -125,20 +103,48 @@ export function PlayerSheetPanel({
         )}
       </div>
 
-      <div className="space-y-4">
+      {/* Su schermi larghi le tre parti stanno affiancate, così la scheda resta
+          bassa e non ruba spazio alla vista condivisa. */}
+      <div className="grid grid-cols-1 gap-x-4 gap-y-3 lg:grid-cols-3">
         {statsEnabled && (
-          <div>
+          <div className="min-w-0">
             <span className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Statistiche
             </span>
             {editable ? (
-              <StatBlock labels={statLabels} stats={readStats(shownStats)} onChange={setStats} />
+              <StatBlock
+                labels={statLabels}
+                stats={readStats(shownStats)}
+                onChange={setStats}
+                dense
+              />
             ) : (
-              <StatBlock labels={statLabels} stats={shownStats} />
+              <StatBlock labels={statLabels} stats={shownStats} dense />
             )}
           </div>
         )}
-        {grid}
+
+        {editable ? (
+          <EditableList
+            title="Inventario"
+            items={inventory}
+            placeholder="Nuovo oggetto..."
+            onChange={setInventory}
+          />
+        ) : (
+          readOnlyList('Inventario', player.inventory, false)
+        )}
+
+        {editable ? (
+          <EditableList
+            title="Bonus"
+            items={bonus}
+            placeholder="Nuovo bonus..."
+            onChange={setBonus}
+          />
+        ) : (
+          readOnlyList('Bonus', player.bonus, true)
+        )}
       </div>
     </section>
   );

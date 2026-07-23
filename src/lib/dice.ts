@@ -110,3 +110,28 @@ export function rollMultiple(diceType: string, count: number): DiceRoll {
 export function scoresCrit(mode: RollMode | undefined): boolean {
   return mode !== 'sum';
 }
+
+/**
+ * Ricava i singoli dadi di un lancio dal suo `detail`, per poterli disegnare.
+ *
+ * - somma: tutti i dadi tirati (`kept` assente);
+ * - vantaggio/svantaggio: i due dadi, con `kept` che indica quello tenuto;
+ * - tiro singolo: un solo dado, il risultato stesso.
+ */
+export function rollDice(roll: {
+  result: number;
+  detail?: string;
+  mode?: RollMode;
+}): { values: number[]; kept?: number } {
+  if (roll.mode === 'sum' && roll.detail) {
+    const values = roll.detail.split(' + ').map(Number).filter(Number.isFinite);
+    return values.length > 0 ? { values } : { values: [roll.result] };
+  }
+
+  if ((roll.mode === 'advantage' || roll.mode === 'disadvantage') && roll.detail) {
+    const values = roll.detail.split(' / ').map(Number).filter(Number.isFinite);
+    if (values.length === 2) return { values, kept: roll.result };
+  }
+
+  return { values: [roll.result] };
+}

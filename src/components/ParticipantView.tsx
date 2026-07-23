@@ -18,6 +18,7 @@ import { SharedView } from './SharedView';
 import { DiceRoller } from './DiceRoller';
 import { PlayerSheetPanel } from './PlayerSheetPanel';
 import { IconButton } from './ui/IconButton';
+import { useToasts } from '../hooks/useToasts';
 import { normalizeCampaign } from '../state/migrations';
 import { DEFAULT_DICE } from '../lib/dice';
 import { decodeRollLabel, encodeRollLabel, isOwnRoll } from '../lib/participantRolls';
@@ -42,12 +43,26 @@ export function ParticipantView({
   onExit,
   sceneImage,
 }: ParticipantViewProps) {
+  const { notify } = useToasts();
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState('');
   const [selectedDice, setSelectedDice] = useState<string>(DEFAULT_DICE);
   const [notesDraft, setNotesDraft] = useState<string | null>(null);
 
   const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Se una scrittura viene rifiutata (in genere regole del database non
+  // aggiornate), l'errore va detto: senza, il lancio o la modifica sparirebbero
+  // in silenzio. Un flag evita di ripetere l'avviso a ogni tentativo.
+  const writeErrorShownRef = useRef(false);
+  const reportWriteError = (what: string) => {
+    console.error(`[fantasia] scrittura non riuscita: ${what}`);
+    if (writeErrorShownRef.current) return;
+    writeErrorShownRef.current = true;
+    notify('Il database ha rifiutato la scrittura. Il master deve pubblicare le regole aggiornate.', {
+      kind: 'error',
+    });
+  };
 
   // Firebase omette le chiavi con array vuoti: senza normalizzazione anche una
   // stanza perfettamente sana arriva con `players` o `healthBars` mancanti.
@@ -96,8 +111,10 @@ export function ParticipantView({
 
   const saveSheet = useCallback(
     (sheet: PlayerSheet) => {
-      updateUserSheet(roomId, userId, sheet).catch(console.error);
+      updateUserSheet(roomId, userId, sheet).catch(() => reportWriteError('scheda'));
     },
+    // `reportWriteError` è stabile abbastanza: dipende solo da `notify`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [roomId, userId],
   );
 
@@ -294,7 +311,7 @@ export function ParticipantView({
                     label: encodeRollLabel(userId, user.name, roll.label),
                     detail: roll.detail,
                     mode: roll.mode,
-                  }).catch(console.error);
+                  }).catch(() => reportWriteError('lancio'));
                 }}
               />
             )

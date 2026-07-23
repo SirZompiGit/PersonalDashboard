@@ -6,6 +6,7 @@ import {
   isFumble,
   parseSides,
   rollAdvantage,
+  rollDice,
   rollDie,
   rollDisadvantage,
   rollMultiple,
@@ -108,6 +109,33 @@ describe('Dado+', () => {
     expect(scoresCrit('advantage')).toBe(true);
     expect(scoresCrit('disadvantage')).toBe(true);
     expect(scoresCrit(undefined)).toBe(true);
+  });
+});
+
+describe('rollDice (dadi da disegnare)', () => {
+  it('un tiro singolo è un solo dado', () => {
+    expect(rollDice({ result: 14 })).toEqual({ values: [14] });
+  });
+
+  it('una somma restituisce tutti i dadi tirati', () => {
+    expect(rollDice({ result: 16, detail: '4 + 10 + 2', mode: 'sum' })).toEqual({
+      values: [4, 10, 2],
+    });
+  });
+
+  it('vantaggio e svantaggio danno due dadi con quello tenuto', () => {
+    expect(rollDice({ result: 15, detail: '15 / 8', mode: 'advantage' })).toEqual({
+      values: [15, 8],
+      kept: 15,
+    });
+    expect(rollDice({ result: 8, detail: '15 / 8', mode: 'disadvantage' })).toEqual({
+      values: [15, 8],
+      kept: 8,
+    });
+  });
+
+  it('ricade sul singolo dado se il dettaglio è illeggibile', () => {
+    expect(rollDice({ result: 7, detail: 'boh', mode: 'sum' })).toEqual({ values: [7] });
   });
 });
 

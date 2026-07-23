@@ -30,6 +30,7 @@ import {
   DEFAULT_ZERO_HP_TEXT,
   SEGMENT_THRESHOLD,
   THIN_SEGMENT_THRESHOLD,
+  VERTICAL_SEGMENT_THRESHOLD,
   getBarColor,
   healthRatio,
   isLowHp,
@@ -158,7 +159,12 @@ function BarTrack({
 
   const interactive = !readOnly && Boolean(onChange);
   const percentage = max > 0 ? (value / max) * 100 : 0;
-  const useSegments = max <= (thin ? THIN_SEGMENT_THRESHOLD : SEGMENT_THRESHOLD);
+  const segmentThreshold = thin
+    ? THIN_SEGMENT_THRESHOLD
+    : vertical
+      ? VERTICAL_SEGMENT_THRESHOLD
+      : SEGMENT_THRESHOLD;
+  const useSegments = max <= segmentThreshold;
 
   const commit = (next: number) => {
     if (!onChange) return;

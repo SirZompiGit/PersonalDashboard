@@ -33,6 +33,17 @@ export const SEGMENT_THRESHOLD = 60;
  */
 export const THIN_SEGMENT_THRESHOLD = 12;
 
+/**
+ * Soglia dei segmenti per la barra verticale.
+ *
+ * Molto più bassa dell'orizzontale: in verticale l'altezza utile è ~150–270px,
+ * e ogni design impone alla traccia un proprio `gap` (Arcano e Retro 3px). Con
+ * cinquanta tacche i soli spazi mangiano tutta l'altezza e i segmenti attivi si
+ * riducono a un pixel, tanto da far sembrare vuota una barra piena. Sopra questa
+ * soglia si passa al riempimento continuo, che non ha spazi e si vede sempre.
+ */
+export const VERTICAL_SEGMENT_THRESHOLD = 24;
+
 export const DEFAULT_ZERO_HP_TEXT = 'DEFUNTO';
 
 /**

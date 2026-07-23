@@ -5,6 +5,7 @@ import {
   MAX_STATUS_EFFECTS,
   SEGMENT_THRESHOLD,
   THIN_SEGMENT_THRESHOLD,
+  VERTICAL_SEGMENT_THRESHOLD,
   clampMaxHp,
   clampResources,
   clampStatusEffects,
@@ -154,6 +155,12 @@ describe('soglia dei segmenti', () => {
     expect(THIN_SEGMENT_THRESHOLD).toBeLessThan(SEGMENT_THRESHOLD);
     // Slot incantesimo, cariche d'ira e pile di scudo restano contabili.
     expect(THIN_SEGMENT_THRESHOLD).toBeGreaterThanOrEqual(9);
+  });
+
+  it('in verticale è più bassa che in orizzontale: i gap dei design mangiano l altezza', () => {
+    expect(VERTICAL_SEGMENT_THRESHOLD).toBeLessThan(SEGMENT_THRESHOLD);
+    // Sopra questa soglia una barra piena sembrava vuota in Arcano e Retro.
+    expect(VERTICAL_SEGMENT_THRESHOLD).toBeGreaterThan(THIN_SEGMENT_THRESHOLD);
   });
 });
 
