@@ -11,7 +11,12 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { parseSides } from '../lib/dice';
 
-/** Profili in coordinate del viewBox 100×100. */
+/**
+ * Profili in coordinate del viewBox 100×100.
+ *
+ * Il 2 non c'è: è tondo, e un cerchio non è un poligono. Viene disegnato a
+ * parte, con un ramo dedicato che salta la geometria di baricentro e inradius.
+ */
 const PROFILES: Record<number, string> = {
   3: '50,10 93,84 7,84',
   4: '50,8 93,84 7,84',
@@ -23,6 +28,9 @@ const PROFILES: Record<number, string> = {
 };
 
 const FALLBACK = PROFILES[6];
+
+/** Cerchio del d2: centro del riquadro, raggio per l'adattamento del numero. */
+const CIRCLE_RADIUS = 46;
 
 /** Dimensione nominale del testo: la scala effettiva viene calcolata dopo. */
 const BASE_FONT = 46;
@@ -108,13 +116,15 @@ export function DiceShape({
   outcome = null,
   className = '',
 }: DiceShapeProps) {
+  const isRound = parseSides(diceType) === 2;
   const outlineText = PROFILES[parseSides(diceType)] ?? FALLBACK;
 
   const { center, radius } = useMemo(() => {
+    if (isRound) return { center: { x: 50, y: 50 }, radius: CIRCLE_RADIUS };
     const points = parsePoints(outlineText);
     const c = centroid(points);
     return { center: c, radius: inradius(points, c) };
-  }, [outlineText]);
+  }, [isRound, outlineText]);
 
   const text = reveal === 'hidden' || value === null ? '?' : String(value);
 
@@ -190,22 +200,45 @@ export function DiceShape({
       }}
     >
       {/* Alone che stacca la sagoma dal fondo. Sta dietro, non dentro. */}
-      <polygon
-        points={outlineText}
-        fill={color}
-        opacity={outcome ? 0.34 : 0.18}
-        style={{ filter: 'blur(7px)' }}
-      />
+      {isRound ? (
+        <circle
+          cx={50}
+          cy={50}
+          r={CIRCLE_RADIUS}
+          fill={color}
+          opacity={outcome ? 0.34 : 0.18}
+          style={{ filter: 'blur(7px)' }}
+        />
+      ) : (
+        <polygon
+          points={outlineText}
+          fill={color}
+          opacity={outcome ? 0.34 : 0.18}
+          style={{ filter: 'blur(7px)' }}
+        />
+      )}
 
       {/* Solo il profilo esterno. */}
-      <polygon
-        points={outlineText}
-        fill={color}
-        fillOpacity={outcome ? 0.16 : 0.1}
-        stroke={color}
-        strokeWidth={outcome ? 3.5 : 3}
-        strokeLinejoin="round"
-      />
+      {isRound ? (
+        <circle
+          cx={50}
+          cy={50}
+          r={CIRCLE_RADIUS}
+          fill={color}
+          fillOpacity={outcome ? 0.16 : 0.1}
+          stroke={color}
+          strokeWidth={outcome ? 3.5 : 3}
+        />
+      ) : (
+        <polygon
+          points={outlineText}
+          fill={color}
+          fillOpacity={outcome ? 0.16 : 0.1}
+          stroke={color}
+          strokeWidth={outcome ? 3.5 : 3}
+          strokeLinejoin="round"
+        />
+      )}
 
       <text
         ref={textRef}

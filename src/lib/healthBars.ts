@@ -3,7 +3,7 @@
  * Prima `getBarColor` e il raggruppamento erano copiati identici nei due file.
  */
 
-import type { ColoredBar, HealthBar, Resource } from '../types';
+import type { ColoredBar, HealthBar, Resource, StatusEffect } from '../types';
 
 /**
  * Limite massimo dei punti ferita.
@@ -33,6 +33,17 @@ export const SEGMENT_THRESHOLD = 60;
  */
 export const THIN_SEGMENT_THRESHOLD = 12;
 
+/**
+ * Soglia dei segmenti per la barra verticale.
+ *
+ * Molto più bassa dell'orizzontale: in verticale l'altezza utile è ~150–270px,
+ * e ogni design impone alla traccia un proprio `gap` (Arcano e Retro 3px). Con
+ * cinquanta tacche i soli spazi mangiano tutta l'altezza e i segmenti attivi si
+ * riducono a un pixel, tanto da far sembrare vuota una barra piena. Sopra questa
+ * soglia si passa al riempimento continuo, che non ha spazi e si vede sempre.
+ */
+export const VERTICAL_SEGMENT_THRESHOLD = 24;
+
 export const DEFAULT_ZERO_HP_TEXT = 'DEFUNTO';
 
 /**
@@ -45,6 +56,16 @@ export const DEFAULT_ZERO_HP_TEXT = 'DEFUNTO';
 export const MAX_RESOURCES = 2;
 
 export const DEFAULT_RESOURCE_COLOR = '#3b82f6';
+
+/**
+ * Effetti di stato per barra.
+ *
+ * Cinque è già il limite oltre cui le targhette smettono di stare accanto al
+ * nome e la barra diventa illeggibile.
+ */
+export const MAX_STATUS_EFFECTS = 5;
+
+export const DEFAULT_STATUS_COLOR = '#a855f7';
 
 /** Soglia sotto la quale scatta l'allerta visiva, se attiva sulla barra. */
 export const LOW_HP_THRESHOLD = 0.25;
@@ -91,6 +112,19 @@ export function clampResources(list: Resource[] | undefined): Resource[] | undef
     return { ...resource, maxValue, currentValue: clampHp(resource.currentValue, maxValue) };
   });
 
+  return clamped.length > 0 ? clamped : undefined;
+}
+
+/**
+ * Come `clampResources`, per gli effetti di stato: al massimo cinque, e
+ * `undefined` quando non ce ne sono, così la barra si serializza identica a
+ * prima che gli effetti esistessero.
+ */
+export function clampStatusEffects(
+  list: StatusEffect[] | undefined,
+): StatusEffect[] | undefined {
+  if (!Array.isArray(list) || list.length === 0) return undefined;
+  const clamped = list.slice(0, MAX_STATUS_EFFECTS);
   return clamped.length > 0 ? clamped : undefined;
 }
 

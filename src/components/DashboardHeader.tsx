@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
+  BarChart3,
   Download,
   ExternalLink,
   History,
@@ -78,6 +79,11 @@ interface DashboardHeaderProps {
   mediaControls: UseMediaResult;
   /** True quando c'è una stanza aperta: le immagini raggiungono i giocatori. */
   sharingMedia: boolean;
+  /** Statistiche dei personaggi. */
+  statsEnabled: boolean;
+  onStatsEnabledChange: (enabled: boolean) => void;
+  statLabels: string[];
+  onStatLabelChange: (index: number, label: string) => void;
 }
 
 /**
@@ -121,6 +127,10 @@ export function DashboardHeader({
   canRedo,
   mediaControls,
   sharingMedia,
+  statsEnabled,
+  onStatsEnabledChange,
+  statLabels,
+  onStatLabelChange,
 }: DashboardHeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -286,7 +296,7 @@ export function DashboardHeader({
               <span className="font-mono text-xs font-bold uppercase tracking-widest text-slate-300">
                 Impostazioni
               </span>
-              <span className="font-mono text-[10px] text-slate-500">v3.0</span>
+              <span className="font-mono text-[10px] text-slate-500">v4.0</span>
             </div>
 
             {/* Colore e design sono due assi indipendenti: 8 × 3 combinazioni. */}
@@ -383,6 +393,47 @@ export function DashboardHeader({
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* --------------------------------------------------- Meccaniche */}
+            <div className="space-y-3 border-t border-bento-border pt-3">
+              <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Meccaniche
+              </span>
+
+              <label className="flex cursor-pointer items-start gap-2.5 select-none">
+                <input
+                  type="checkbox"
+                  checked={statsEnabled}
+                  onChange={(event) => onStatsEnabledChange(event.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-theme-500"
+                />
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-200">
+                    <BarChart3 className="h-3.5 w-3.5 text-theme-500" /> Statistiche
+                  </span>
+                  <span className="block text-[11px] leading-snug text-slate-500">
+                    Sei valori per personaggio nella scheda PG. In condivisione compaiono solo
+                    per il giocatore di turno.
+                  </span>
+                </span>
+              </label>
+
+              {statsEnabled && (
+                <div className="grid grid-cols-2 gap-1.5 animate-fade-in">
+                  {statLabels.map((label, index) => (
+                    <input
+                      key={index}
+                      type="text"
+                      value={label}
+                      onChange={(event) => onStatLabelChange(index, event.target.value)}
+                      maxLength={20}
+                      aria-label={`Nome della statistica ${index + 1}`}
+                      className="rounded-lg border border-bento-border bg-bento-panel px-2 py-1.5 text-xs text-slate-200 transition-colors duration-200 focus:border-theme-500 focus:outline-none focus:ring-1 focus:ring-theme-500/20"
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             <MediaSettings

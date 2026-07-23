@@ -2,15 +2,19 @@ import { describe, expect, it } from 'vitest';
 import type { HealthBar, Resource } from '../types';
 import {
   MAX_RESOURCES,
+  MAX_STATUS_EFFECTS,
   SEGMENT_THRESHOLD,
   THIN_SEGMENT_THRESHOLD,
+  VERTICAL_SEGMENT_THRESHOLD,
   clampMaxHp,
   clampResources,
+  clampStatusEffects,
   getBarColor,
   groupBars,
   healthRatio,
   isLowHp,
 } from './healthBars';
+import type { StatusEffect } from '../types';
 
 const bar = (over: Partial<HealthBar> = {}): HealthBar => ({
   id: 'x',
@@ -152,6 +156,12 @@ describe('soglia dei segmenti', () => {
     // Slot incantesimo, cariche d'ira e pile di scudo restano contabili.
     expect(THIN_SEGMENT_THRESHOLD).toBeGreaterThanOrEqual(9);
   });
+
+  it('in verticale è più bassa che in orizzontale: i gap dei design mangiano l altezza', () => {
+    expect(VERTICAL_SEGMENT_THRESHOLD).toBeLessThan(SEGMENT_THRESHOLD);
+    // Sopra questa soglia una barra piena sembrava vuota in Arcano e Retro.
+    expect(VERTICAL_SEGMENT_THRESHOLD).toBeGreaterThan(THIN_SEGMENT_THRESHOLD);
+  });
 });
 
 describe('clampResources', () => {
@@ -181,6 +191,26 @@ describe('clampResources', () => {
   it('sparisce del tutto invece di restare una lista vuota', () => {
     expect(clampResources([])).toBeUndefined();
     expect(clampResources(undefined)).toBeUndefined();
+  });
+});
+
+describe('clampStatusEffects', () => {
+  const effect = (over: Partial<StatusEffect> = {}): StatusEffect => ({
+    id: 'e',
+    name: 'Avvelenato',
+    color: '#a855f7',
+    shared: true,
+    ...over,
+  });
+
+  it('non ne tiene più di cinque', () => {
+    const list = clampStatusEffects(Array.from({ length: 8 }, (_, i) => effect({ id: `e${i}` })));
+    expect(list).toHaveLength(MAX_STATUS_EFFECTS);
+  });
+
+  it('sparisce del tutto quando non ce ne sono', () => {
+    expect(clampStatusEffects([])).toBeUndefined();
+    expect(clampStatusEffects(undefined)).toBeUndefined();
   });
 });
 

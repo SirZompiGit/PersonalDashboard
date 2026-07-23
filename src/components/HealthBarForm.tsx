@@ -15,16 +15,18 @@
  */
 
 import { type FormEvent, useState } from 'react';
-import type { ColoredBar, HealthBar, Resource } from '../types';
+import type { ColoredBar, HealthBar, Resource, StatusEffect } from '../types';
 import { ChevronRight, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react';
 import { IconButton } from './ui/IconButton';
 import { FIELD, FIELD_SM } from './ui/fields';
 import { newId } from '../lib/ids';
 import {
   DEFAULT_RESOURCE_COLOR,
+  DEFAULT_STATUS_COLOR,
   DEFAULT_ZERO_HP_TEXT,
   MAX_HP,
   MAX_RESOURCES,
+  MAX_STATUS_EFFECTS,
   MIN_HP,
   clampMaxHp,
 } from '../lib/healthBars';
@@ -64,6 +66,13 @@ interface ResourceDraft extends ColorDraft {
   shared: boolean;
 }
 
+interface StatusDraft {
+  id: string;
+  name: string;
+  color: string;
+  shared: boolean;
+}
+
 interface FormValues extends ColorDraft {
   name: string;
   maxValue: string;
@@ -72,6 +81,7 @@ interface FormValues extends ColorDraft {
   zeroHpText: string;
   lowHpAlert: boolean;
   resources: ResourceDraft[];
+  statusEffects: StatusDraft[];
 }
 
 const EMPTY_COLORS: ColorDraft = {
@@ -91,6 +101,7 @@ const EMPTY_FORM: FormValues = {
   zeroHpText: DEFAULT_ZERO_HP_TEXT,
   lowHpAlert: true,
   resources: [],
+  statusEffects: [],
 };
 
 const newResourceDraft = (): ResourceDraft => ({
@@ -100,6 +111,13 @@ const newResourceDraft = (): ResourceDraft => ({
   name: '',
   maxValue: '10',
   currentValue: '10',
+  shared: true,
+});
+
+const newStatusDraft = (): StatusDraft => ({
+  id: newId(),
+  name: '',
+  color: DEFAULT_STATUS_COLOR,
   shared: true,
 });
 
@@ -132,6 +150,12 @@ function toDraft(bar: HealthBar): FormValues {
       mid: resource.gradientColors.mid,
       high: resource.gradientColors.high,
       shared: resource.shared,
+    })),
+    statusEffects: (bar.statusEffects ?? []).map((effect) => ({
+      id: effect.id,
+      name: effect.name,
+      color: effect.color,
+      shared: effect.shared,
     })),
   };
 }
@@ -294,6 +318,7 @@ export function HealthBarForm({ bar, healthGroups, onSubmit, onCancel }: HealthB
   // Le risorse si aprono da sole quando ce ne sono già: chiuse nasconderebbero
   // proprio ciò che si è venuti a modificare.
   const [showResources, setShowResources] = useState(() => (bar?.resources?.length ?? 0) > 0);
+  const [showEffects, setShowEffects] = useState(() => (bar?.statusEffects?.length ?? 0) > 0);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [expandedResource, setExpandedResource] = useState<string | null>(null);
 
@@ -327,6 +352,29 @@ export function HealthBarForm({ bar, healthGroups, onSubmit, onCancel }: HealthB
     if (expandedResource === id) setExpandedResource(null);
   };
 
+  const patchEffect = (id: string, patch: Partial<StatusDraft>) =>
+    setForm((current) => ({
+      ...current,
+      statusEffects: current.statusEffects.map((effect) =>
+        effect.id === id ? { ...effect, ...patch } : effect,
+      ),
+    }));
+
+  const addEffect = () => {
+    setForm((current) =>
+      current.statusEffects.length >= MAX_STATUS_EFFECTS
+        ? current
+        : { ...current, statusEffects: [...current.statusEffects, newStatusDraft()] },
+    );
+    setShowEffects(true);
+  };
+
+  const removeEffect = (id: string) =>
+    setForm((current) => ({
+      ...current,
+      statusEffects: current.statusEffects.filter((effect) => effect.id !== id),
+    }));
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     const name = form.name.trim();
@@ -351,6 +399,15 @@ export function HealthBarForm({ bar, healthGroups, onSubmit, onCancel }: HealthB
       };
     });
 
+    // Un effetto senza nome non blocca l'invio (il campo è in una sezione
+    // richiudibile): ne riceve uno generico.
+    const statusEffects: StatusEffect[] = form.statusEffects.map((draft, index) => ({
+      id: draft.id,
+      name: draft.name.trim().slice(0, 24) || `Effetto ${index + 1}`,
+      color: draft.color,
+      shared: draft.shared,
+    }));
+
     onSubmit({
       name,
       maxValue,
@@ -364,6 +421,7 @@ export function HealthBarForm({ bar, healthGroups, onSubmit, onCancel }: HealthB
       // Assente quando non ce ne sono: una barra senza risorse deve produrre lo
       // stesso identico payload di prima che le risorse esistessero.
       resources: resources.length > 0 ? resources : undefined,
+      statusEffects: statusEffects.length > 0 ? statusEffects : undefined,
     });
   };
 
@@ -594,6 +652,88 @@ export function HealthBarForm({ bar, healthGroups, onSubmit, onCancel }: HealthB
                   </div>
                 );
               })
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ------------------------------------------------- effetti di stato */}
+      <div className="space-y-2 border-t border-bento-border pt-3">
+        <div className="flex items-center justify-between gap-2">
+          <SectionToggle
+            title="Effetti di stato"
+            badge={`${form.statusEffects.length}/${MAX_STATUS_EFFECTS}`}
+            open={showEffects}
+            onToggle={() => setShowEffects((v) => !v)}
+          />
+
+          {form.statusEffects.length < MAX_STATUS_EFFECTS && (
+            <button
+              type="button"
+              onClick={addEffect}
+              className="flex shrink-0 items-center gap-1 rounded-lg border border-bento-border bg-bento-panel px-2 py-1 text-[11px] font-semibold text-theme-500 transition-colors duration-200 hover:border-slate-600 hover:text-theme-400"
+            >
+              <Plus className="h-3 w-3" />
+              Aggiungi
+            </button>
+          )}
+        </div>
+
+        {showEffects && (
+          <div className="space-y-2 animate-fade-in">
+            {form.statusEffects.length === 0 ? (
+              <p className="text-[11px] leading-snug text-slate-600">
+                Targhette colorate accanto al nome: Avvelenato, Stordito, Furioso. Solo
+                un&apos;etichetta con un colore, senza valori.
+              </p>
+            ) : (
+              form.statusEffects.map((effect, index) => (
+                <div key={effect.id} className="flex items-center gap-1.5">
+                  <span
+                    className="relative inline-flex h-6 w-6 shrink-0 rounded-full border border-bento-border"
+                    style={{ backgroundColor: effect.color }}
+                  >
+                    <input
+                      type="color"
+                      value={effect.color}
+                      onChange={(event) => patchEffect(effect.id, { color: event.target.value })}
+                      aria-label={`Colore dell'effetto ${index + 1}`}
+                      className="h-full w-full cursor-pointer opacity-0"
+                    />
+                  </span>
+
+                  <input
+                    type="text"
+                    placeholder={`Effetto ${index + 1}`}
+                    value={effect.name}
+                    onChange={(event) => patchEffect(effect.id, { name: event.target.value })}
+                    maxLength={24}
+                    aria-label={`Nome dell'effetto ${index + 1}`}
+                    className={`${FIELD_SM} min-w-0 flex-1`}
+                  />
+
+                  <IconButton
+                    label={effect.shared ? 'Visibile ai giocatori' : 'Nascosto ai giocatori'}
+                    tone={effect.shared ? 'accent' : 'neutral'}
+                    onClick={() => patchEffect(effect.id, { shared: !effect.shared })}
+                    aria-pressed={effect.shared}
+                  >
+                    {effect.shared ? (
+                      <Eye className="h-3.5 w-3.5" />
+                    ) : (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    )}
+                  </IconButton>
+
+                  <IconButton
+                    label={`Elimina l'effetto ${index + 1}`}
+                    tone="danger"
+                    onClick={() => removeEffect(effect.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </IconButton>
+                </div>
+              ))
             )}
           </div>
         )}

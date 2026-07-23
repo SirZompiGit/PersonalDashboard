@@ -58,6 +58,11 @@ export function HealthBarsManager({
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Trascinamento per il riordino delle barre. La barra trascinata e quella
+  // sotto il puntatore bastano: il reducer sposta solo dentro il gruppo.
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
   const [managingGroups, setManagingGroups] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [editingGroup, setEditingGroup] = useState<string | null>(null);
@@ -93,7 +98,13 @@ export function HealthBarsManager({
     );
   };
 
-  const renderBar = (bar: HealthBar) => (
+  const endDrag = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  /** `siblings` sono le barre della stessa sezione: il riordino resta lì dentro. */
+  const renderBar = (bar: HealthBar, siblings: HealthBar[], index: number) => (
     <HealthBarItem
       key={bar.id}
       bar={bar}
@@ -113,6 +124,29 @@ export function HealthBarsManager({
         setEditingId(target.id);
       }}
       onDelete={handleDeleteBar}
+      reorder={{
+        onMoveUp: () => dispatch({ type: 'MOVE_HEALTH_BAR', id: bar.id, direction: 'up' }),
+        onMoveDown: () => dispatch({ type: 'MOVE_HEALTH_BAR', id: bar.id, direction: 'down' }),
+        canMoveUp: index > 0,
+        canMoveDown: index < siblings.length - 1,
+        onDragStart: () => setDraggedId(bar.id),
+        // Evidenzia solo se la barra trascinata appartiene a questa sezione:
+        // un rilascio fra gruppi il reducer lo ignora comunque.
+        onDragEnter: () => {
+          if (draggedId && draggedId !== bar.id && siblings.some((b) => b.id === draggedId)) {
+            setDragOverId(bar.id);
+          }
+        },
+        onDragEnd: endDrag,
+        onDrop: () => {
+          if (draggedId && draggedId !== bar.id) {
+            dispatch({ type: 'REORDER_HEALTH_BAR', id: draggedId, toId: bar.id });
+          }
+          endDrag();
+        },
+        dragging: draggedId === bar.id,
+        dragOver: dragOverId === bar.id,
+      }}
     />
   );
 
@@ -351,7 +385,11 @@ export function HealthBarsManager({
                   )}
                 </button>
 
-                {!isCollapsed && <div className="space-y-3">{group.bars.map(renderBar)}</div>}
+                {!isCollapsed && (
+                  <div className="space-y-3">
+                    {group.bars.map((bar, index) => renderBar(bar, group.bars, index))}
+                  </div>
+                )}
               </div>
             );
           })}

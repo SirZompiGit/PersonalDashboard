@@ -15,6 +15,13 @@ export interface Player {
   name: string;
   inventory: InventoryItem[];
   bonus: BonusItem[];
+  /**
+   * Le sei statistiche, nell'ordine di `statLabels`. Campo additivo e assente
+   * finché non viene toccato: un personaggio senza statistiche si serializza
+   * esattamente come prima che la meccanica esistesse. In visualizzazione i
+   * valori mancanti valgono `DEFAULT_STAT`.
+   */
+  stats?: number[];
 }
 
 export interface GradientColors {
@@ -59,6 +66,22 @@ export interface Resource extends ColoredBar {
   shared: boolean;
 }
 
+/**
+ * Effetto di stato applicato a una barra: Avvelenato, Stordito, Furioso.
+ * Solo un'etichetta con un colore — non ha valori né modalità colore, a
+ * differenza delle risorse.
+ */
+export interface StatusEffect {
+  id: string;
+  name: string;
+  color: string;
+  /**
+   * Visibile ai giocatori nella vista condivisa. Permette di tenere segreto
+   * un effetto ("Furioso") mostrandone altri ("Avvelenato").
+   */
+  shared: boolean;
+}
+
 export interface HealthBar extends ColoredBar {
   id: string;
   name: string;
@@ -78,6 +101,11 @@ export interface HealthBar extends ColoredBar {
    * prima, quindi le stanze già esistenti non cambiano di una virgola.
    */
   resources?: Resource[];
+  /**
+   * Effetti di stato, al massimo cinque. Additivo e assente quando vuoto, come
+   * `resources`.
+   */
+  statusEffects?: StatusEffect[];
 }
 
 export interface RollResult {
@@ -130,4 +158,11 @@ export interface CampaignState {
   logoVariant: LogoVariant;
   healthGroups: string[];
   diceLabels: string[];
+  /**
+   * Statistiche dei personaggi. Campi additivi: le campagne salvate prima non
+   * li hanno e ricadono sui valori di default tramite la normalizzazione.
+   */
+  statsEnabled: boolean;
+  /** Nomi delle sei statistiche, rinominabili a livello di campagna. */
+  statLabels: string[];
 }

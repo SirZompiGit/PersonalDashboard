@@ -17,8 +17,6 @@ interface NotesPanelProps {
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  /** Colore dell'icona: distingue a colpo d'occhio appunti privati e pubblici. */
-  accent?: 'theme' | 'emerald';
   /** Altezza dell'area di testo in linea. */
   rows?: number;
   badge?: ReactNode;
@@ -52,7 +50,6 @@ export function NotesPanel({
   value,
   onChange,
   placeholder,
-  accent = 'theme',
   rows = 4,
   badge,
 }: NotesPanelProps) {
@@ -60,7 +57,10 @@ export function NotesPanel({
   const [query, setQuery] = useState('');
   const [copied, setCopied] = useState(false);
 
-  const iconColor = accent === 'emerald' ? 'text-emerald-400' : 'text-theme-500';
+  // L'icona segue il tema: l'`emerald` fisso era l'unico elemento
+  // dell'intestazione a ignorare il colore scelto. La distinzione privati/
+  // pubblici resta affidata all'etichetta di testo.
+  const iconColor = 'text-theme-500';
 
   // Prima questo filtro veniva ricalcolato a ogni riferimento, quattro volte
   // per render solo per mostrare il conteggio dei risultati.

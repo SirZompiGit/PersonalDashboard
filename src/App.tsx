@@ -566,6 +566,10 @@ export default function App() {
         canRedo={canRedo}
         mediaControls={mediaControls}
         sharingMedia={isMaster}
+        statsEnabled={state.statsEnabled}
+        onStatsEnabledChange={(enabled) => dispatch({ type: 'SET_STATS_ENABLED', enabled })}
+        statLabels={state.statLabels}
+        onStatLabelChange={(index, label) => dispatch({ type: 'SET_STAT_LABEL', index, label })}
         onBackToWelcome={() => {
           // Con una stanza aperta si chiude prima: altrimenti resterebbe viva
           // sul database, con i giocatori collegati a un master che non c'è più.
@@ -639,6 +643,8 @@ export default function App() {
           players={state.players}
           activePlayerId={state.activePlayerId}
           dispatch={dispatch}
+          statsEnabled={state.statsEnabled}
+          statLabels={state.statLabels}
         />
       </main>
 

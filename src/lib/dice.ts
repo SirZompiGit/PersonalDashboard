@@ -5,7 +5,7 @@
  * calcolare se un lancio fosse critico. Qui c'è una volta sola.
  */
 
-export const DICE_TYPES = ['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'] as const;
+export const DICE_TYPES = ['d2', 'd3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'] as const;
 
 export type DiceType = (typeof DICE_TYPES)[number];
 

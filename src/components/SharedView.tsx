@@ -32,6 +32,7 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { HealthBarItem } from './HealthBarItem';
+import { StatBlock } from './StatBlock';
 import { CRITICAL_COLOR, DiceShape, FUMBLE_COLOR } from './DiceShape';
 import { CritSparkles } from './CritSparkles';
 import { Modal } from './ui/Modal';
@@ -216,9 +217,9 @@ export function SharedView({
       key={bar.id}
       bar={bar}
       onChangeValue={() => {}}
-      // Le risorse che il master tiene private spariscono anche dalla sua
-      // anteprima: quello che vede qui è esattamente ciò che vedono i giocatori.
-      onlySharedResources
+      // Risorse ed effetti che il master tiene privati spariscono anche dalla
+      // sua anteprima: qui vede esattamente ciò che vedono i giocatori.
+      onlyShared
       readOnly
       layout={effectiveLayout}
     />
@@ -355,6 +356,17 @@ export function SharedView({
                             </span>
                           )}
                         </div>
+
+                        {/* Le statistiche compaiono solo per il giocatore di
+                            turno, in sola lettura. */}
+                        {isActive && state.statsEnabled && (
+                          <div className="mt-3 border-t border-bento-border/50 pt-3 animate-fade-in">
+                            <span className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              Statistiche
+                            </span>
+                            <StatBlock labels={state.statLabels} stats={player.stats} dense />
+                          </div>
+                        )}
 
                         {isActive && (player.inventory.length > 0 || player.bonus.length > 0) && (
                           // `@sm` guarda la larghezza del CONTENITORE, non del

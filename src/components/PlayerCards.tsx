@@ -13,6 +13,7 @@ import type { CampaignAction } from '../state/campaignReducer';
 import { Backpack, Check, Edit2, Plus, Sparkles, Trash2, Users, X } from 'lucide-react';
 import { EmptyState } from './ui/EmptyState';
 import { IconButton } from './ui/IconButton';
+import { StatBlock } from './StatBlock';
 import { useToasts } from '../hooks/useToasts';
 import { newId } from '../lib/ids';
 
@@ -22,6 +23,8 @@ interface PlayerCardsProps {
   players: Player[];
   activePlayerId: string | null;
   dispatch: React.Dispatch<CampaignAction>;
+  statsEnabled: boolean;
+  statLabels: string[];
 }
 
 interface ItemSectionProps {
@@ -186,7 +189,13 @@ function ItemSection({
   );
 }
 
-export function PlayerCards({ players, activePlayerId, dispatch }: PlayerCardsProps) {
+export function PlayerCards({
+  players,
+  activePlayerId,
+  dispatch,
+  statsEnabled,
+  statLabels,
+}: PlayerCardsProps) {
   const { notifyUndo } = useToasts();
 
   return (
@@ -240,6 +249,26 @@ export function PlayerCards({ players, activePlayerId, dispatch }: PlayerCardsPr
                 </div>
 
                 <div className="flex-grow space-y-5 pl-2">
+                  {statsEnabled && (
+                    <div className="space-y-1.5">
+                      <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        Statistiche
+                      </span>
+                      <StatBlock
+                        labels={statLabels}
+                        stats={player.stats}
+                        dense
+                        onChange={(next) =>
+                          dispatch({
+                            type: 'UPDATE_PLAYER',
+                            id: player.id,
+                            changes: { stats: next },
+                          })
+                        }
+                      />
+                    </div>
+                  )}
+
                   <ItemSection
                     player={player}
                     section="inventory"

@@ -11,7 +11,13 @@ const geometry = (points: string) => {
 describe('profili', () => {
   it('ogni dado selezionabile ha la propria sagoma', () => {
     for (const type of DICE_TYPES) {
-      expect(DICE_PROFILES[parseSides(type)]).toBeTruthy();
+      const sides = parseSides(type);
+      // Il d2 è tondo: non è un poligono, viene disegnato come cerchio.
+      if (sides === 2) {
+        expect(DICE_PROFILES[sides]).toBeUndefined();
+        continue;
+      }
+      expect(DICE_PROFILES[sides]).toBeTruthy();
     }
   });
 
