@@ -23,17 +23,22 @@ import type {
   InventoryItem,
   Player,
   Resource,
+  RollMode,
   RollResult,
+  StatusEffect,
 } from '../types';
 import { newId } from '../lib/ids';
 import { DEFAULT_DICE, isDiceType } from '../lib/dice';
 import {
   DEFAULT_RESOURCE_COLOR,
+  DEFAULT_STATUS_COLOR,
   DEFAULT_ZERO_HP_TEXT,
   MAX_RESOURCES,
+  MAX_STATUS_EFFECTS,
   clampHp,
   clampMaxHp,
 } from '../lib/healthBars';
+import { DEFAULT_STAT, DEFAULT_STAT_LABELS, STAT_COUNT, clampStat } from '../lib/stats';
 import { normalizeLogoVariant, normalizeStyle, normalizeTheme } from '../theme';
 import { DEFAULT_DICE_LABELS, createEmptyCampaign } from './defaults';
 
@@ -93,17 +98,34 @@ function normalizeNamedItems(value: unknown): (InventoryItem | BonusItem)[] {
     .filter((item) => item.name.length > 0);
 }
 
+/**
+ * Le statistiche restano assenti quando il personaggio non ne ha: è ciò che
+ * mantiene identico il payload di chi è stato creato prima della meccanica.
+ * Quando ci sono, si portano sempre a esattamente sei valori.
+ */
+function normalizeStats(value: unknown): number[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  // Uno slot mancante torna al default, non a zero: un array più corto è
+  // malformato, non un personaggio con statistiche azzerate.
+  return Array.from({ length: STAT_COUNT }, (_, i) => clampStat(asNumber(value[i], DEFAULT_STAT)));
+}
+
 function normalizePlayer(value: unknown): Player | null {
   if (!isRecord(value)) return null;
   const name = asString(value.name).trim();
   if (!name) return null;
 
-  return {
+  const player: Player = {
     id: asString(value.id) || newId(),
     name: name.slice(0, 60),
     inventory: normalizeNamedItems(value.inventory),
     bonus: normalizeNamedItems(value.bonus),
   };
+
+  const stats = normalizeStats(value.stats);
+  if (stats) player.stats = stats;
+
+  return player;
 }
 
 function normalizeGradient(value: unknown): GradientColors {
@@ -140,6 +162,19 @@ function normalizeResource(value: unknown): Resource | null {
     staticColor: asColor(value.staticColor, DEFAULT_RESOURCE_COLOR),
     gradientColors: normalizeGradient(value.gradientColors),
     // Visibile salvo esplicita esclusione, come `lowHpAlert`.
+    shared: value.shared !== false,
+  };
+}
+
+function normalizeStatusEffect(value: unknown): StatusEffect | null {
+  if (!isRecord(value)) return null;
+  const name = asString(value.name).trim();
+  if (!name) return null;
+
+  return {
+    id: asString(value.id) || newId(),
+    name: name.slice(0, 24),
+    color: asColor(value.color, DEFAULT_STATUS_COLOR),
     shared: value.shared !== false,
   };
 }
@@ -182,6 +217,13 @@ function normalizeHealthBar(value: unknown): HealthBar | null {
 
   if (resources.length > 0) bar.resources = resources;
 
+  const statusEffects = asArray(value.statusEffects)
+    .map(normalizeStatusEffect)
+    .filter((e): e is StatusEffect => e !== null)
+    .slice(0, MAX_STATUS_EFFECTS);
+
+  if (statusEffects.length > 0) bar.statusEffects = statusEffects;
+
   return bar;
 }
 
@@ -202,6 +244,15 @@ function normalizeRoll(value: unknown): RollResult | null {
 
   const label = asString(value.label).trim();
   if (label) roll.label = label.slice(0, 200);
+
+  // Campi Dado+: additivi, assenti sui lanci normali. `detail` è descrittivo,
+  // `mode` va tenuto solo se è uno dei valori noti.
+  const detail = asString(value.detail).trim();
+  if (detail) roll.detail = detail.slice(0, 200);
+
+  if (value.mode === 'advantage' || value.mode === 'disadvantage' || value.mode === 'sum') {
+    roll.mode = value.mode as RollMode;
+  }
 
   return roll;
 }
@@ -253,7 +304,20 @@ export function normalizeCampaign(raw: unknown): CampaignState {
     logoVariant: normalizeLogoVariant(raw.logoVariant),
     healthGroups,
     diceLabels: asStringList(raw.diceLabels, DEFAULT_DICE_LABELS),
+    statsEnabled: asBoolean(raw.statsEnabled),
+    statLabels: normalizeStatLabels(raw.statLabels),
+    dicePlus: asBoolean(raw.dicePlus),
+    playersCanEdit: asBoolean(raw.playersCanEdit),
   };
+}
+
+/** Sempre sei etichette: i posti vuoti o mancanti tornano al nome predefinito. */
+function normalizeStatLabels(value: unknown): string[] {
+  const source = Array.isArray(value) ? value : [];
+  return Array.from({ length: STAT_COUNT }, (_, i) => {
+    const label = asString(source[i]).trim();
+    return label ? label.slice(0, 20) : DEFAULT_STAT_LABELS[i];
+  });
 }
 
 /**

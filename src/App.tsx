@@ -180,6 +180,39 @@ export default function App() {
     exitRoom();
   }, [participantKicked, exitRoom, notify]);
 
+  /**
+   * Il master fonde nella campagna le schede modificate dai giocatori.
+   *
+   * È l'unico a scrivere `campaign`: i giocatori scrivono uno snapshot su
+   * `users/{userId}/sheet`, e qui viene copiato nel personaggio assegnato. La
+   * fusione avviene SOLO quando quel `sheet` cambia — tracciato per utente —
+   * mai al cambio della campagna: così una modifica del master non viene mai
+   * sovrascritta da una scheda ferma.
+   */
+  const lastSheetRef = useRef<Record<string, string>>({});
+  useEffect(() => {
+    if (room.session?.role !== 'master' || !room.roomState) return;
+    if (!stateRef.current.playersCanEdit) return;
+
+    for (const [uid, roomUser] of Object.entries(room.roomState.users ?? {})) {
+      if (!roomUser.assignedPlayerId || !roomUser.sheet) continue;
+
+      const json = JSON.stringify(roomUser.sheet);
+      if (lastSheetRef.current[uid] === json) continue;
+      lastSheetRef.current[uid] = json;
+
+      dispatch({
+        type: 'UPDATE_PLAYER',
+        id: roomUser.assignedPlayerId,
+        changes: {
+          inventory: Array.isArray(roomUser.sheet.inventory) ? roomUser.sheet.inventory : [],
+          bonus: Array.isArray(roomUser.sheet.bonus) ? roomUser.sheet.bonus : [],
+          ...(Array.isArray(roomUser.sheet.stats) ? { stats: roomUser.sheet.stats } : {}),
+        },
+      });
+    }
+  }, [room.roomState, room.session, dispatch]);
+
   const handleExport = useCallback(() => {
     try {
       const slug =
@@ -566,6 +599,12 @@ export default function App() {
         canRedo={canRedo}
         mediaControls={mediaControls}
         sharingMedia={isMaster}
+        statsEnabled={state.statsEnabled}
+        onStatsEnabledChange={(enabled) => dispatch({ type: 'SET_STATS_ENABLED', enabled })}
+        statLabels={state.statLabels}
+        onStatLabelChange={(index, label) => dispatch({ type: 'SET_STAT_LABEL', index, label })}
+        dicePlus={state.dicePlus}
+        onDicePlusChange={(enabled) => dispatch({ type: 'SET_DICE_PLUS', enabled })}
         onBackToWelcome={() => {
           // Con una stanza aperta si chiude prima: altrimenti resterebbe viva
           // sul database, con i giocatori collegati a un master che non c'è più.
@@ -618,12 +657,10 @@ export default function App() {
               selectedDice={state.selectedDice}
               theme={state.theme}
               diceLabels={state.diceLabels}
+              dicePlus={state.dicePlus}
               enableShortcuts
-              onRoll={(diceType, result, label) =>
-                dispatch({
-                  type: 'ROLL',
-                  roll: { diceType, result, timestamp: Date.now(), label },
-                })
+              onRoll={(roll) =>
+                dispatch({ type: 'ROLL', roll: { ...roll, timestamp: Date.now() } })
               }
               onToggleRollVisibility={() => dispatch({ type: 'TOGGLE_ROLL_VISIBILITY' })}
               onClearHistory={() => dispatch({ type: 'CLEAR_ROLL_HISTORY' })}
@@ -639,6 +676,13 @@ export default function App() {
           players={state.players}
           activePlayerId={state.activePlayerId}
           dispatch={dispatch}
+          statsEnabled={state.statsEnabled}
+          statLabels={state.statLabels}
+          canGrantControl={isMaster}
+          playersCanEdit={state.playersCanEdit}
+          onPlayersCanEditChange={(enabled) =>
+            dispatch({ type: 'SET_PLAYERS_CAN_EDIT', enabled })
+          }
         />
       </main>
 

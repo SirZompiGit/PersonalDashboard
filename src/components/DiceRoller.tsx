@@ -14,9 +14,21 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { RollResult } from '../types';
-import { Check, Dices, Edit2, Eye, EyeOff, Plus, RotateCcw, Sparkles, Tag, Trash2, X } from 'lucide-react';
-import { DICE_TYPES, isCritical, isFumble, parseSides, rollDie } from '../lib/dice';
+import type { RollMode, RollResult } from '../types';
+import { Check, Dices, Edit2, Eye, EyeOff, Minus, Plus, RotateCcw, Sparkles, Tag, Trash2, X } from 'lucide-react';
+import {
+  DICE_TYPES,
+  MAX_DICE_COUNT,
+  isCritical,
+  isFumble,
+  parseSides,
+  rollAdvantage,
+  rollDie,
+  rollDisadvantage,
+  rollMultiple,
+  rollSingle,
+  scoresCrit,
+} from '../lib/dice';
 import { getThemeAccent } from '../theme';
 import type { CampaignTheme } from '../theme';
 import { playCritFailSound, playCritSuccessSound, playRollSound } from '../utils/audio';
@@ -31,8 +43,17 @@ const LABEL_STORAGE_KEY = 'fantasia_selected_dice_label';
 const TICK_MS = 50;
 const TICKS = 8;
 
+/** Un lancio pronto per essere registrato, con gli extra di Dado+. */
+export interface RollPayload {
+  diceType: string;
+  result: number;
+  label?: string;
+  detail?: string;
+  mode?: RollMode;
+}
+
 interface DiceRollerProps {
-  onRoll: (diceType: string, result: number, label?: string) => void;
+  onRoll: (roll: RollPayload) => void;
   lastRoll: RollResult | null;
   selectedDice: string;
   onSelectedDiceChange: (dice: string) => void;
@@ -48,6 +69,11 @@ interface DiceRollerProps {
   hideHistory?: boolean;
   /** Attiva le scorciatoie globali. Solo la dashboard del master le usa. */
   enableShortcuts?: boolean;
+  /**
+   * Dado+: mostra etichette, vantaggio/svantaggio e dadi multipli. Spento,
+   * resta il solo dado singolo senza etichette.
+   */
+  dicePlus?: boolean;
 }
 
 export function DiceRoller({
@@ -66,12 +92,18 @@ export function DiceRoller({
   onDeleteDiceLabel,
   hideHistory = false,
   enableShortcuts = false,
+  dicePlus = false,
 }: DiceRollerProps) {
   const [isRolling, setIsRolling] = useState(false);
   const [tempNumber, setTempNumber] = useState<number | null>(null);
   const [shaking, setShaking] = useState(false);
   /** Istante dell'ultimo critico: serve a rimontare le scintille. */
   const [critBurst, setCritBurst] = useState<number | null>(null);
+
+  // Controlli Dado+. Vantaggio/svantaggio valgono su una faccia sola; con più
+  // dadi il tiro diventa una somma e la scelta di vantaggio si spegne.
+  const [rollMode, setRollMode] = useState<'normal' | 'advantage' | 'disadvantage'>('normal');
+  const [diceCount, setDiceCount] = useState(1);
 
   const [selectedLabel, setSelectedLabel] = useState(() => {
     try {
@@ -130,6 +162,11 @@ export function DiceRoller({
     setCritBurst(null);
     playRollSound();
 
+    // Senza Dado+ resta il dado singolo e nessuna etichetta.
+    const count = dicePlus ? diceCount : 1;
+    const mode = dicePlus ? rollMode : 'normal';
+    const label = dicePlus ? selectedLabel || undefined : undefined;
+
     let tick = 0;
     intervalRef.current = window.setInterval(() => {
       tick += 1;
@@ -142,24 +179,40 @@ export function DiceRoller({
       if (intervalRef.current) window.clearInterval(intervalRef.current);
       intervalRef.current = null;
 
-      const result = rollDie(selectedDice);
-      setTempNumber(result);
-      setIsRolling(false);
-      onRoll(selectedDice, result, selectedLabel || undefined);
+      const outcome =
+        count > 1
+          ? rollMultiple(selectedDice, count)
+          : mode === 'advantage'
+            ? rollAdvantage(selectedDice)
+            : mode === 'disadvantage'
+              ? rollDisadvantage(selectedDice)
+              : rollSingle(selectedDice);
 
-      if (isCritical(result, selectedDice)) {
+      setTempNumber(outcome.result);
+      setIsRolling(false);
+      onRoll({
+        diceType: selectedDice,
+        result: outcome.result,
+        label,
+        detail: outcome.detail,
+        mode: outcome.mode,
+      });
+
+      // Le somme non fanno critico: 18 su 3d6 non è un 6 naturale.
+      const canCrit = scoresCrit(outcome.mode);
+      if (canCrit && isCritical(outcome.result, selectedDice)) {
         playCritSuccessSound();
         // Il timestamp rimonta CritSparkles con una key nuova: le particelle si
         // rigenerano anche su due critici di fila.
         setCritBurst(Date.now());
         schedule(() => setCritBurst(null), 1600);
-      } else if (isFumble(result, selectedDice)) {
+      } else if (canCrit && isFumble(outcome.result, selectedDice)) {
         playCritFailSound();
         setShaking(true);
         schedule(() => setShaking(false), 500);
       }
     }, TICK_MS);
-  }, [isRolling, selectedDice, selectedLabel, onRoll]);
+  }, [isRolling, selectedDice, selectedLabel, onRoll, dicePlus, diceCount, rollMode]);
 
   // Scorciatoie: 1-7 scelgono il dado, Spazio lancia. Disattivate mentre si
   // scrive, altrimenti renderebbero inutilizzabili le aree di testo.
@@ -196,8 +249,10 @@ export function DiceRoller({
   }, [enableShortcuts, onSelectedDiceChange, roll]);
 
   const canManageLabels = Boolean(onAddDiceLabel || onRenameDiceLabel || onDeleteDiceLabel);
-  const critical = lastRoll ? isCritical(lastRoll.result, lastRoll.diceType) : false;
-  const fumble = lastRoll ? isFumble(lastRoll.result, lastRoll.diceType) : false;
+  // Su una somma il critico non conta: il colore e le scintille restano spenti.
+  const canCrit = lastRoll ? scoresCrit(lastRoll.mode) : false;
+  const critical = lastRoll ? canCrit && isCritical(lastRoll.result, lastRoll.diceType) : false;
+  const fumble = lastRoll ? canCrit && isFumble(lastRoll.result, lastRoll.diceType) : false;
 
   return (
     <section
@@ -230,50 +285,108 @@ export function DiceRoller({
         ))}
       </div>
 
-      {diceLabels.length > 0 || canManageLabels ? (
-        <div className="mb-4 space-y-1">
-          <div className="flex items-center justify-between gap-2">
-            <label
-              htmlFor="dice-label"
-              className="flex items-center gap-1 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400"
-            >
-              <Tag className="h-3.5 w-3.5 text-slate-500" />
-              Associa Etichetta
-            </label>
-            {canManageLabels && (
-              <button
-                type="button"
-                onClick={() => setManagingLabels((v) => !v)}
-                aria-expanded={managingLabels}
-                className={`text-[10px] font-semibold transition-colors duration-200 ${
-                  managingLabels
-                    ? 'text-theme-400 underline'
-                    : 'text-slate-500 hover:text-theme-400'
-                }`}
+      {dicePlus && (
+        <div className="mb-4 space-y-2.5">
+          {/* Etichetta */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <label
+                htmlFor="dice-label"
+                className="flex items-center gap-1 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400"
               >
-                Gestisci Etichette
-              </button>
-            )}
+                <Tag className="h-3.5 w-3.5 text-slate-500" />
+                Associa Etichetta
+              </label>
+              {canManageLabels && (
+                <button
+                  type="button"
+                  onClick={() => setManagingLabels((v) => !v)}
+                  aria-expanded={managingLabels}
+                  className={`text-[10px] font-semibold transition-colors duration-200 ${
+                    managingLabels
+                      ? 'text-theme-400 underline'
+                      : 'text-slate-500 hover:text-theme-400'
+                  }`}
+                >
+                  Gestisci Etichette
+                </button>
+              )}
+            </div>
+
+            <select
+              id="dice-label"
+              value={selectedLabel}
+              onChange={(event) => setSelectedLabel(event.target.value)}
+              disabled={isRolling}
+              className="w-full cursor-pointer rounded-lg border border-bento-border bg-bento-bg px-2.5 py-1.5 text-xs text-slate-200 transition-colors duration-200 focus:border-theme-500 focus:outline-none focus:ring-1 focus:ring-theme-500/20"
+            >
+              <option value="">Nessuna Etichetta</option>
+              {diceLabels.map((label) => (
+                <option key={label} value={label}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <select
-            id="dice-label"
-            value={selectedLabel}
-            onChange={(event) => setSelectedLabel(event.target.value)}
-            disabled={isRolling}
-            className="w-full cursor-pointer rounded-lg border border-bento-border bg-bento-bg px-2.5 py-1.5 text-xs text-slate-200 transition-colors duration-200 focus:border-theme-500 focus:outline-none focus:ring-1 focus:ring-theme-500/20"
-          >
-            <option value="">Nessuna Etichetta</option>
-            {diceLabels.map((label) => (
-              <option key={label} value={label}>
+          {/* Vantaggio / Svantaggio: disattivati con più dadi, dove il tiro è
+              una somma e "tenere il più alto" non ha senso. */}
+          <div className="grid grid-cols-3 gap-1.5">
+            {(
+              [
+                { id: 'normal', label: 'Normale' },
+                { id: 'advantage', label: 'Vantaggio' },
+                { id: 'disadvantage', label: 'Svantaggio' },
+              ] as const
+            ).map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setRollMode(id)}
+                disabled={isRolling || diceCount > 1}
+                aria-pressed={rollMode === id}
+                className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold transition-colors duration-200 disabled:opacity-40 ${
+                  rollMode === id && diceCount === 1
+                    ? 'border-theme-500 bg-theme-600 text-white'
+                    : 'border-bento-border bg-bento-bg text-slate-400 hover:border-slate-500 hover:text-slate-200'
+                }`}
+              >
                 {label}
-              </option>
+              </button>
             ))}
-          </select>
-        </div>
-      ) : null}
+          </div>
 
-      {managingLabels && canManageLabels && (
+          {/* Numero di dadi (NdX), sommati. */}
+          <div className="flex items-center justify-between rounded-lg border border-bento-border bg-bento-bg px-2.5 py-1.5">
+            <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Dadi
+            </span>
+            <div className="flex items-center gap-2">
+              <IconButton
+                label="Un dado in meno"
+                onClick={() => setDiceCount((n) => Math.max(1, n - 1))}
+                disabled={isRolling || diceCount <= 1}
+                className="disabled:opacity-30"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </IconButton>
+              <span className="min-w-[3ch] text-center font-mono text-sm font-bold text-slate-100">
+                {diceCount}d
+              </span>
+              <IconButton
+                label="Un dado in più"
+                onClick={() => setDiceCount((n) => Math.min(MAX_DICE_COUNT, n + 1))}
+                disabled={isRolling || diceCount >= MAX_DICE_COUNT}
+                className="disabled:opacity-30"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </IconButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {dicePlus && managingLabels && canManageLabels && (
         <div className="mb-4 space-y-3 rounded-xl border border-bento-border bg-bento-bg p-3.5 text-left animate-fade-in">
           <div className="flex items-center justify-between border-b border-bento-border pb-1.5">
             <span className="font-mono text-[10px] font-bold uppercase text-theme-500">
@@ -452,6 +565,16 @@ export function DiceRoller({
           <div className="relative flex flex-col items-center text-center">
             <span className="mb-1 flex flex-wrap items-center justify-center gap-1.5 font-mono text-xs uppercase tracking-widest text-slate-500">
               Risultato {lastRoll.diceType}
+              {lastRoll.mode === 'advantage' && (
+                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold text-emerald-400">
+                  Vantaggio
+                </span>
+              )}
+              {lastRoll.mode === 'disadvantage' && (
+                <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[9px] font-bold text-red-400">
+                  Svantaggio
+                </span>
+              )}
               {lastRoll.label && (
                 <span className="rounded border border-bento-border bg-bento-void px-1.5 py-0.5 text-[10px] font-bold text-slate-400">
                   {lastRoll.label}
@@ -471,6 +594,11 @@ export function DiceRoller({
               outcome={critical ? 'critical' : fumble ? 'fumble' : null}
               className="h-36 w-36 sm:h-40 sm:w-40"
             />
+
+            {/* Scomposizione del tiro Dado+: "4 + 2 + 5" o "15 / 8". */}
+            {lastRoll.detail && !isRollHidden && (
+              <span className="mt-1 font-mono text-[11px] text-slate-500">{lastRoll.detail}</span>
+            )}
 
             {/* Le etichette prendono lo stesso colore del dado: oro e rosso
                 non seguono il tema, e lasciarle nel colore del tema le avrebbe
@@ -511,7 +639,9 @@ export function DiceRoller({
         disabled={isRolling}
         className="w-full rounded-xl border border-theme-500 bg-theme-600 py-3 font-display text-base font-bold uppercase tracking-wider text-white shadow-raised transition-colors duration-200 hover:bg-theme-500 active:scale-[0.98] disabled:opacity-50"
       >
-        {isRolling ? 'Lancio...' : `Lancia ${selectedDice}`}
+        {isRolling
+          ? 'Lancio...'
+          : `Lancia ${dicePlus && diceCount > 1 ? `${diceCount}${selectedDice}` : selectedDice}`}
       </button>
 
       {!hideHistory && (

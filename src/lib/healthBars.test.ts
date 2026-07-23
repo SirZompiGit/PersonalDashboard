@@ -2,15 +2,18 @@ import { describe, expect, it } from 'vitest';
 import type { HealthBar, Resource } from '../types';
 import {
   MAX_RESOURCES,
+  MAX_STATUS_EFFECTS,
   SEGMENT_THRESHOLD,
   THIN_SEGMENT_THRESHOLD,
   clampMaxHp,
   clampResources,
+  clampStatusEffects,
   getBarColor,
   groupBars,
   healthRatio,
   isLowHp,
 } from './healthBars';
+import type { StatusEffect } from '../types';
 
 const bar = (over: Partial<HealthBar> = {}): HealthBar => ({
   id: 'x',
@@ -181,6 +184,26 @@ describe('clampResources', () => {
   it('sparisce del tutto invece di restare una lista vuota', () => {
     expect(clampResources([])).toBeUndefined();
     expect(clampResources(undefined)).toBeUndefined();
+  });
+});
+
+describe('clampStatusEffects', () => {
+  const effect = (over: Partial<StatusEffect> = {}): StatusEffect => ({
+    id: 'e',
+    name: 'Avvelenato',
+    color: '#a855f7',
+    shared: true,
+    ...over,
+  });
+
+  it('non ne tiene più di cinque', () => {
+    const list = clampStatusEffects(Array.from({ length: 8 }, (_, i) => effect({ id: `e${i}` })));
+    expect(list).toHaveLength(MAX_STATUS_EFFECTS);
+  });
+
+  it('sparisce del tutto quando non ce ne sono', () => {
+    expect(clampStatusEffects([])).toBeUndefined();
+    expect(clampStatusEffects(undefined)).toBeUndefined();
   });
 });
 

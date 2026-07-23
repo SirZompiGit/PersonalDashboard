@@ -32,12 +32,13 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { HealthBarItem } from './HealthBarItem';
+import { StatBlock } from './StatBlock';
 import { CRITICAL_COLOR, DiceShape, FUMBLE_COLOR } from './DiceShape';
 import { CritSparkles } from './CritSparkles';
 import { Modal } from './ui/Modal';
 import { IconButton } from './ui/IconButton';
 import { groupBars } from '../lib/healthBars';
-import { isCritical, isFumble, parseSides } from '../lib/dice';
+import { isCritical, isFumble, parseSides, scoresCrit } from '../lib/dice';
 import { decodeRollLabel, resolveRollerName } from '../lib/participantRolls';
 import { getThemeAccent } from '../theme';
 import { NARROW_SCREEN, useMediaQuery } from '../hooks/useMediaQuery';
@@ -180,16 +181,23 @@ export function SharedView({
     playRollSound();
     schedule(() => setShaking(false), 300);
 
-    if (isCritical(lastRoll.result, lastRoll.diceType)) {
+    // Una somma NdX non fa critico, per quanto alta.
+    if (scoresCrit(lastRoll.mode) && isCritical(lastRoll.result, lastRoll.diceType)) {
       playCritSuccessSound();
       setCritBurst(lastRoll.timestamp);
       schedule(() => setCritBurst(null), 1600);
-    } else if (isFumble(lastRoll.result, lastRoll.diceType)) {
+    } else if (scoresCrit(lastRoll.mode) && isFumble(lastRoll.result, lastRoll.diceType)) {
       playCritFailSound();
     }
   }, [lastRoll]);
 
   const { groups, ungrouped } = groupBars(healthBars, state.healthGroups);
+
+  // Critico/fumble del dado master, con la somma esclusa.
+  const masterCrit =
+    lastRoll !== null && scoresCrit(lastRoll.mode) && isCritical(lastRoll.result, lastRoll.diceType);
+  const masterFumble =
+    lastRoll !== null && scoresCrit(lastRoll.mode) && isFumble(lastRoll.result, lastRoll.diceType);
 
   /**
    * Gli ultimi quattro lanci, su una riga sola.
@@ -216,9 +224,9 @@ export function SharedView({
       key={bar.id}
       bar={bar}
       onChangeValue={() => {}}
-      // Le risorse che il master tiene private spariscono anche dalla sua
-      // anteprima: quello che vede qui è esattamente ciò che vedono i giocatori.
-      onlySharedResources
+      // Risorse ed effetti che il master tiene privati spariscono anche dalla
+      // sua anteprima: qui vede esattamente ciò che vedono i giocatori.
+      onlyShared
       readOnly
       layout={effectiveLayout}
     />
@@ -355,6 +363,17 @@ export function SharedView({
                             </span>
                           )}
                         </div>
+
+                        {/* Le statistiche compaiono solo per il giocatore di
+                            turno, in sola lettura. */}
+                        {isActive && state.statsEnabled && (
+                          <div className="mt-3 border-t border-bento-border/50 pt-3 animate-fade-in">
+                            <span className="mb-1.5 block font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              Statistiche
+                            </span>
+                            <StatBlock labels={state.statLabels} stats={player.stats} dense />
+                          </div>
+                        )}
 
                         {isActive && (player.inventory.length > 0 || player.bonus.length > 0) && (
                           // `@sm` guarda la larghezza del CONTENITORE, non del
@@ -533,13 +552,7 @@ export function SharedView({
                         state="result"
                         accent={accent}
                         reveal={isRollHidden ? 'hidden' : 'full'}
-                        outcome={
-                          isCritical(lastRoll.result, lastRoll.diceType)
-                            ? 'critical'
-                            : isFumble(lastRoll.result, lastRoll.diceType)
-                              ? 'fumble'
-                              : null
-                        }
+                        outcome={masterCrit ? 'critical' : masterFumble ? 'fumble' : null}
                         className="h-28 w-28 sm:h-32 sm:w-32 lg:h-40 lg:w-40"
                       />
 
@@ -554,7 +567,12 @@ export function SharedView({
                       {!isRollHidden && critBurst !== null && <CritSparkles key={critBurst} />}
                     </div>
 
-                    {!isRollHidden && isCritical(lastRoll.result, lastRoll.diceType) && (
+                    {/* Dettaglio del tiro Dado+: "4 + 2 + 5" o "15 / 8". */}
+                    {!isRollHidden && lastRoll.detail && (
+                      <span className="font-mono text-[11px] text-slate-500">{lastRoll.detail}</span>
+                    )}
+
+                    {!isRollHidden && masterCrit && (
                       <div
                         className="inline-flex animate-pulse items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider"
                         style={{
@@ -567,7 +585,7 @@ export function SharedView({
                       </div>
                     )}
 
-                    {!isRollHidden && isFumble(lastRoll.result, lastRoll.diceType) && (
+                    {!isRollHidden && masterFumble && (
                       <div
                         className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-wider"
                         style={{
@@ -645,7 +663,7 @@ export function SharedView({
                               >
                                 {roll.result}
                               </span>
-                              {isCritical(roll.result, roll.diceType) && (
+                              {scoresCrit(roll.mode) && isCritical(roll.result, roll.diceType) && (
                                 <Sparkles className="absolute top-0 right-1 h-3 w-3 text-theme-400 opacity-60" />
                               )}
                             </div>

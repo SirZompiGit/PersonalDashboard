@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { CampaignState } from '../types';
 import { campaignReducer } from './campaignReducer';
 import { createSeedCampaign } from './defaults';
 import { MAX_ROLL_HISTORY } from './migrations';
@@ -221,5 +222,110 @@ describe('risorse delle barre', () => {
     });
 
     expect(next.healthBars.find((b) => b.id === bar.id)!).not.toHaveProperty('resources');
+  });
+});
+
+describe('riordino delle barre', () => {
+  const bars = (groups: (string | undefined)[]) =>
+    groups.map((group, i) => ({
+      type: 'ADD_HEALTH_BAR' as const,
+      bar: {
+        name: `B${i}`,
+        maxValue: 10,
+        currentValue: 10,
+        colorMode: 'static' as const,
+        staticColor: '#10b981',
+        gradientColors: { low: '#ef4444', mid: '#f59e0b', high: '#10b981' },
+        ...(group ? { group } : {}),
+      },
+    }));
+
+  /** Campagna con barre nei gruppi dati, e i loro id nell'ordine di creazione. */
+  const build = (groups: (string | undefined)[]) => {
+    let state: CampaignState = { ...seed(), healthBars: [], healthGroups: ['Nemici', 'Alleati'] };
+    for (const action of bars(groups)) state = campaignReducer(state, action);
+    return { state, ids: state.healthBars.map((b) => b.id) };
+  };
+
+  it('sposta su e giù restando nel gruppo', () => {
+    const { state, ids } = build(['Nemici', 'Nemici', 'Nemici']);
+    const moved = campaignReducer(state, { type: 'MOVE_HEALTH_BAR', id: ids[2], direction: 'up' });
+    expect(moved.healthBars.map((b) => b.id)).toEqual([ids[0], ids[2], ids[1]]);
+  });
+
+  it('non attraversa i gruppi anche se le barre sono interlacciate', () => {
+    // Array: [Nemici, Alleati, Nemici]. Il primo Nemici non ha vicini Nemici
+    // sopra, ma "giù" trova il secondo Nemici saltando l'Alleato in mezzo.
+    const { state, ids } = build(['Nemici', 'Alleati', 'Nemici']);
+    const moved = campaignReducer(state, { type: 'MOVE_HEALTH_BAR', id: ids[0], direction: 'down' });
+    expect(moved.healthBars.map((b) => b.id)).toEqual([ids[2], ids[1], ids[0]]);
+  });
+
+  it('ai bordi del gruppo non fa nulla', () => {
+    const { state, ids } = build(['Nemici', 'Alleati']);
+    // ids[0] è l'unico Nemici: non ha dove andare.
+    expect(campaignReducer(state, { type: 'MOVE_HEALTH_BAR', id: ids[0], direction: 'up' })).toBe(state);
+    expect(campaignReducer(state, { type: 'MOVE_HEALTH_BAR', id: ids[0], direction: 'down' })).toBe(state);
+  });
+
+  it('il trascinamento fra gruppi diversi viene ignorato', () => {
+    const { state, ids } = build(['Nemici', 'Alleati']);
+    expect(
+      campaignReducer(state, { type: 'REORDER_HEALTH_BAR', id: ids[0], toId: ids[1] }),
+    ).toBe(state);
+  });
+});
+
+describe('statistiche nel reducer', () => {
+  it('imposta e limita i valori, e li toglie quando assenti', () => {
+    let state = seed();
+    const id = state.players[0].id;
+
+    state = campaignReducer(state, {
+      type: 'UPDATE_PLAYER',
+      id,
+      changes: { stats: [16, 200, -4, 10, 10, 10] },
+    });
+    expect(state.players[0].stats).toEqual([16, 99, 0, 10, 10, 10]);
+
+    state = campaignReducer(state, {
+      type: 'UPDATE_PLAYER',
+      id,
+      changes: { stats: undefined },
+    });
+    expect(state.players[0]).not.toHaveProperty('stats');
+  });
+
+  it('rinomina una statistica e ignora un indice fuori scala', () => {
+    const state = seed();
+    const renamed = campaignReducer(state, { type: 'SET_STAT_LABEL', index: 0, label: 'Vigore' });
+    expect(renamed.statLabels[0]).toBe('Vigore');
+    expect(campaignReducer(state, { type: 'SET_STAT_LABEL', index: 9, label: 'X' })).toBe(state);
+  });
+});
+
+describe('effetti di stato nel reducer', () => {
+  it('svuotando la lista toglie la chiave', () => {
+    let state = campaignReducer(seed(), {
+      type: 'ADD_HEALTH_BAR',
+      bar: {
+        name: 'Boss',
+        maxValue: 40,
+        currentValue: 40,
+        colorMode: 'static',
+        staticColor: '#10b981',
+        gradientColors: { low: '#ef4444', mid: '#f59e0b', high: '#10b981' },
+        statusEffects: [{ id: 'e1', name: 'Furioso', color: '#ef4444', shared: false }],
+      },
+    });
+    const bar = state.healthBars.at(-1)!;
+    expect(bar.statusEffects).toHaveLength(1);
+
+    state = campaignReducer(state, {
+      type: 'UPDATE_HEALTH_BAR',
+      id: bar.id,
+      changes: { statusEffects: undefined },
+    });
+    expect(state.healthBars.find((b) => b.id === bar.id)!).not.toHaveProperty('statusEffects');
   });
 });

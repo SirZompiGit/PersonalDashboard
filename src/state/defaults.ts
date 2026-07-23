@@ -1,6 +1,7 @@
 import type { CampaignState } from '../types';
 import { DEFAULT_DICE } from '../lib/dice';
 import { DEFAULT_HEALTH_GROUPS } from '../lib/healthBars';
+import { DEFAULT_STAT_LABELS } from '../lib/stats';
 import { DEFAULT_LOGO_VARIANT, DEFAULT_STYLE, DEFAULT_THEME } from '../theme';
 
 export const DEFAULT_DICE_LABELS = [
@@ -31,6 +32,10 @@ export function createEmptyCampaign(): CampaignState {
     logoVariant: DEFAULT_LOGO_VARIANT,
     healthGroups: [...DEFAULT_HEALTH_GROUPS],
     diceLabels: [...DEFAULT_DICE_LABELS],
+    statsEnabled: false,
+    statLabels: [...DEFAULT_STAT_LABELS],
+    dicePlus: false,
+    playersCanEdit: false,
   };
 }
 

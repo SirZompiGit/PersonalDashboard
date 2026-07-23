@@ -259,7 +259,6 @@ export function CampaignHeader({
               value={campaignNotes}
               onChange={(text) => dispatch({ type: 'SET_CAMPAIGN_NOTES', text })}
               placeholder="Scrivi qui gli appunti visibili ai giocatori nella schermata condivisa..."
-              accent="emerald"
             />
           </div>
         </div>

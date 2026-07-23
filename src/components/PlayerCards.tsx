@@ -13,6 +13,7 @@ import type { CampaignAction } from '../state/campaignReducer';
 import { Backpack, Check, Edit2, Plus, Sparkles, Trash2, Users, X } from 'lucide-react';
 import { EmptyState } from './ui/EmptyState';
 import { IconButton } from './ui/IconButton';
+import { StatBlock } from './StatBlock';
 import { useToasts } from '../hooks/useToasts';
 import { newId } from '../lib/ids';
 
@@ -22,6 +23,12 @@ interface PlayerCardsProps {
   players: Player[];
   activePlayerId: string | null;
   dispatch: React.Dispatch<CampaignAction>;
+  statsEnabled: boolean;
+  statLabels: string[];
+  /** In multiplayer: il master può passare la modifica delle schede ai giocatori. */
+  canGrantControl: boolean;
+  playersCanEdit: boolean;
+  onPlayersCanEditChange: (enabled: boolean) => void;
 }
 
 interface ItemSectionProps {
@@ -186,7 +193,16 @@ function ItemSection({
   );
 }
 
-export function PlayerCards({ players, activePlayerId, dispatch }: PlayerCardsProps) {
+export function PlayerCards({
+  players,
+  activePlayerId,
+  dispatch,
+  statsEnabled,
+  statLabels,
+  canGrantControl,
+  playersCanEdit,
+  onPlayersCanEditChange,
+}: PlayerCardsProps) {
   const { notifyUndo } = useToasts();
 
   return (
@@ -196,6 +212,26 @@ export function PlayerCards({ players, activePlayerId, dispatch }: PlayerCardsPr
           Schede dei Giocatori
         </h2>
         <span className="h-px flex-grow bg-bento-border" />
+
+        {/* Lo zaino illuminato passa ai giocatori la modifica di inventario e
+            statistiche. Solo in multiplayer: in Lite non c'è nessuno a cui
+            passarla. */}
+        {canGrantControl && (
+          <IconButton
+            label={
+              playersCanEdit
+                ? 'I giocatori possono modificare la propria scheda — clicca per riprendere il controllo'
+                : 'Passa ai giocatori la modifica della propria scheda'
+            }
+            tip="left"
+            active={playersCanEdit}
+            onClick={() => onPlayersCanEditChange(!playersCanEdit)}
+            aria-pressed={playersCanEdit}
+            className={playersCanEdit ? 'text-theme-400' : ''}
+          >
+            <Backpack className="h-4 w-4" />
+          </IconButton>
+        )}
       </div>
 
       {players.length === 0 ? (
@@ -240,6 +276,25 @@ export function PlayerCards({ players, activePlayerId, dispatch }: PlayerCardsPr
                 </div>
 
                 <div className="flex-grow space-y-5 pl-2">
+                  {statsEnabled && (
+                    <div className="space-y-2">
+                      <span className="font-mono text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Statistiche
+                      </span>
+                      <StatBlock
+                        labels={statLabels}
+                        stats={player.stats}
+                        onChange={(next) =>
+                          dispatch({
+                            type: 'UPDATE_PLAYER',
+                            id: player.id,
+                            changes: { stats: next },
+                          })
+                        }
+                      />
+                    </div>
+                  )}
+
                   <ItemSection
                     player={player}
                     section="inventory"

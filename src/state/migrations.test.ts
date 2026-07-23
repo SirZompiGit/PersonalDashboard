@@ -163,6 +163,115 @@ describe('risorse delle barre', () => {
   });
 });
 
+describe('effetti di stato', () => {
+  const withEffects = (statusEffects: unknown) =>
+    normalizeCampaign({
+      title: 'X',
+      healthBars: [{ name: 'Goblin', maxValue: 10, currentValue: 10, statusEffects }],
+    }).healthBars[0];
+
+  it('conserva quelli validi con nome e colore', () => {
+    const bar = withEffects([{ id: 'p', name: 'Avvelenato', color: '#22c55e' }]);
+    expect(bar.statusEffects).toHaveLength(1);
+    expect(bar.statusEffects?.[0]).toMatchObject({ name: 'Avvelenato', color: '#22c55e' });
+  });
+
+  it('non ne tiene più di cinque e scarta i malformati', () => {
+    const bar = withEffects([
+      null,
+      { name: '' },
+      { name: 'A' },
+      { name: 'B' },
+      { name: 'C' },
+      { name: 'D' },
+      { name: 'E' },
+      { name: 'F' },
+    ]);
+    expect(bar.statusEffects).toHaveLength(5);
+  });
+
+  it('resta assente quando non ce ne sono', () => {
+    for (const input of [undefined, [], 'niente', [null]]) {
+      expect(withEffects(input)).not.toHaveProperty('statusEffects');
+    }
+  });
+});
+
+describe('statistiche del personaggio', () => {
+  const withStats = (stats: unknown) =>
+    normalizeCampaign({
+      title: 'X',
+      players: [{ id: 'p1', name: 'Eroe', stats }],
+    }).players[0];
+
+  it('porta sempre a sei valori, riportati nei limiti', () => {
+    const player = withStats([16, 999, -3]);
+    expect(player.stats).toEqual([16, 99, 0, 10, 10, 10]);
+  });
+
+  it('resta assente quando il personaggio non ne ha', () => {
+    for (const input of [undefined, 'niente', {}]) {
+      expect(withStats(input)).not.toHaveProperty('stats');
+    }
+  });
+});
+
+describe('flag di campagna', () => {
+  it('partono spenti e con sei etichette predefinite', () => {
+    const state = normalizeCampaign({ title: 'X' });
+    expect(state.statsEnabled).toBe(false);
+    expect(state.dicePlus).toBe(false);
+    expect(state.playersCanEdit).toBe(false);
+    expect(state.statLabels).toHaveLength(6);
+    expect(state.statLabels[0]).toBe('Forza');
+  });
+
+  it('rispetta i valori salvati e i nomi rinominati', () => {
+    const state = normalizeCampaign({
+      title: 'X',
+      statsEnabled: true,
+      dicePlus: true,
+      statLabels: ['Vigore', '', 'Tempra'],
+    });
+    expect(state.statsEnabled).toBe(true);
+    expect(state.dicePlus).toBe(true);
+    // Il vuoto torna al predefinito, i mancanti pure.
+    expect(state.statLabels).toEqual([
+      'Vigore',
+      'Destrezza',
+      'Tempra',
+      'Intelligenza',
+      'Saggezza',
+      'Carisma',
+    ]);
+  });
+});
+
+describe('lanci Dado+', () => {
+  it('conserva dettaglio e modalità validi', () => {
+    const state = normalizeCampaign({
+      title: 'X',
+      lastRoll: { diceType: 'd6', result: 11, detail: '4 + 3 + 4', mode: 'sum' },
+    });
+    expect(state.lastRoll).toMatchObject({ detail: '4 + 3 + 4', mode: 'sum' });
+  });
+
+  it('scarta una modalità sconosciuta e resta assente su un tiro normale', () => {
+    const bad = normalizeCampaign({
+      title: 'X',
+      lastRoll: { diceType: 'd20', result: 12, mode: 'boh' },
+    });
+    expect(bad.lastRoll).not.toHaveProperty('mode');
+
+    const plain = normalizeCampaign({
+      title: 'X',
+      lastRoll: { diceType: 'd20', result: 12 },
+    });
+    expect(plain.lastRoll).not.toHaveProperty('detail');
+    expect(plain.lastRoll).not.toHaveProperty('mode');
+  });
+});
+
 describe('formati salvati', () => {
   it('legge il formato senza involucro delle versioni precedenti', () => {
     const legacy = JSON.stringify({

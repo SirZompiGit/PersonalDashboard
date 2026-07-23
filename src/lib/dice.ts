@@ -5,11 +5,16 @@
  * calcolare se un lancio fosse critico. Qui c'è una volta sola.
  */
 
-export const DICE_TYPES = ['d3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'] as const;
+import type { RollMode } from '../types';
+
+export const DICE_TYPES = ['d2', 'd3', 'd4', 'd6', 'd8', 'd10', 'd12', 'd20'] as const;
 
 export type DiceType = (typeof DICE_TYPES)[number];
 
 export const DEFAULT_DICE: DiceType = 'd20';
+
+/** Massimo numero di dadi in un tiro multiplo (NdX). */
+export const MAX_DICE_COUNT = 12;
 
 /** Numero di facce di un dado. Restituisce 0 se la stringa non è valida. */
 export function parseSides(diceType: string | undefined | null): number {
@@ -51,4 +56,57 @@ export function isFumble(result: number, diceType: string): boolean {
 
 export function isDiceType(value: unknown): value is DiceType {
   return typeof value === 'string' && (DICE_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * Esito di un lancio Dado+.
+ *
+ * `result` è sempre il numero finale mostrato; `detail` lo racconta; `mode`
+ * distingue i casi. Su `sum` il critico va soppresso (una somma NdX non fa
+ * critico), sui tiri a faccia singola resta valido sul `result`.
+ */
+export interface DiceRoll {
+  result: number;
+  detail?: string;
+  mode?: RollMode;
+}
+
+/** Tiro singolo: nessun `detail` né `mode`, come un lancio normale. */
+export function rollSingle(diceType: string): DiceRoll {
+  return { result: rollDie(diceType) };
+}
+
+/** Tira due dadi e tiene il più alto (vantaggio) o il più basso (svantaggio). */
+function rollKeepOne(diceType: string, keep: 'high' | 'low'): DiceRoll {
+  const a = rollDie(diceType);
+  const b = rollDie(diceType);
+  const result = keep === 'high' ? Math.max(a, b) : Math.min(a, b);
+  const mode: RollMode = keep === 'high' ? 'advantage' : 'disadvantage';
+  const kept = keep === 'high' ? Math.max(a, b) : Math.min(a, b);
+  const dropped = keep === 'high' ? Math.min(a, b) : Math.max(a, b);
+  return { result, mode, detail: `${kept} / ${dropped}` };
+}
+
+export const rollAdvantage = (diceType: string): DiceRoll => rollKeepOne(diceType, 'high');
+export const rollDisadvantage = (diceType: string): DiceRoll => rollKeepOne(diceType, 'low');
+
+/**
+ * Somma di più dadi dello stesso tipo (es. 3d6). Con un dado solo è un tiro
+ * singolo — nessun `mode`, così il critico resta possibile.
+ */
+export function rollMultiple(diceType: string, count: number): DiceRoll {
+  const n = Math.max(1, Math.min(Math.floor(count) || 1, MAX_DICE_COUNT));
+  if (n === 1) return rollSingle(diceType);
+
+  const dice = Array.from({ length: n }, () => rollDie(diceType));
+  const result = dice.reduce((sum, value) => sum + value, 0);
+  return { result, mode: 'sum', detail: dice.join(' + ') };
+}
+
+/**
+ * Un lancio è "criticabile" quando rappresenta una faccia singola.
+ * Le somme (`sum`) no: 18 su 3d6 non è un critico.
+ */
+export function scoresCrit(mode: RollMode | undefined): boolean {
+  return mode !== 'sum';
 }

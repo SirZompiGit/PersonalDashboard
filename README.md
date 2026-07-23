@@ -8,7 +8,13 @@
 
 ---
 
-Partecipanti e ordine di turno, lancio dei dadi con etichette, barre della vita interattive con le loro risorse, schede giocatore, appunti privati e pubblici, e uno schermo condiviso da proiettare ai giocatori.
+Partecipanti e ordine di turno, lancio dei dadi con etichette, barre della vita interattive con risorse ed effetti di stato, schede giocatore con statistiche, appunti privati e pubblici, e uno schermo condiviso da proiettare ai giocatori.
+
+Tre meccaniche opzionali, da attivare nelle impostazioni:
+
+- **Statistiche** — sei valori per personaggio (nomi rinominabili), visibili nella scheda PG e, in condivisione, solo per il giocatore di turno.
+- **Dado+** — etichette, vantaggio/svantaggio e dadi multipli (NdX). Spento, resta il solo dado singolo.
+- **Controllo ai giocatori** — in multiplayer il master può passare a ciascun giocatore la modifica della propria scheda (icona zaino). Solo il giocatore di turno può lanciare i dadi.
 
 Funziona in due modalità:
 
@@ -40,7 +46,7 @@ Altri comandi:
 
 ```bash
 npm run lint       # controllo dei tipi (TypeScript strict)
-npm test           # 145 verifiche automatiche
+npm test           # 178 verifiche automatiche
 npm run test:watch # le stesse, rieseguite a ogni salvataggio
 npm run build      # build di produzione in dist/
 npm run preview    # anteprima della build
@@ -78,9 +84,11 @@ Senza `.env` la Versione X appare disattivata con una spiegazione, e la Lite con
 ```
 rooms/{pin}
   campaign          → la campagna del master
-  users/{userId}    → { id, name, assignedPlayerId, notes }
+  users/{userId}    → { id, name, assignedPlayerId, notes, sheet? }
   participantRolls  → array degli ultimi 10 lanci dei giocatori
 ```
+
+Il campo `sheet` compare solo quando il master passa ai giocatori il controllo della propria scheda: il giocatore vi scrive uno snapshot di inventario, bonus e statistiche, e il master lo fonde nella campagna (resta l'unico a scrivere `campaign`).
 
 Gli utenti vengono rimossi dal server quando la scheda si chiude (`onDisconnect`). La stanza si elimina **solo** premendo "Chiudi Stanza": ricaricare la pagina non la distrugge, e la sessione riprende da dove era.
 

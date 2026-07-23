@@ -10,12 +10,13 @@
  *  - Gli appunti privati non vengono più scritti sul database a ogni tasto.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { RoomState } from '../firebaseUtils';
-import { pushParticipantRoll, updateUser } from '../firebaseUtils';
-import { Check, LogOut, User, WifiOff } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { PlayerSheet, RoomState } from '../firebaseUtils';
+import { pushParticipantRoll, updateUser, updateUserSheet } from '../firebaseUtils';
+import { Check, Hourglass, LogOut, User, WifiOff } from 'lucide-react';
 import { SharedView } from './SharedView';
 import { DiceRoller } from './DiceRoller';
+import { PlayerSheetPanel } from './PlayerSheetPanel';
 import { IconButton } from './ui/IconButton';
 import { normalizeCampaign } from '../state/migrations';
 import { DEFAULT_DICE } from '../lib/dice';
@@ -88,6 +89,27 @@ export function ParticipantView({
   }
 
   const assignedPlayer = campaign.players.find((p) => p.id === user.assignedPlayerId);
+
+  // Solo il giocatore di turno può lanciare i dadi.
+  const isMyTurn = Boolean(assignedPlayer && campaign.activePlayerId === assignedPlayer.id);
+  const canEditSheet = Boolean(assignedPlayer) && campaign.playersCanEdit;
+
+  const saveSheet = useCallback(
+    (sheet: PlayerSheet) => {
+      updateUserSheet(roomId, userId, sheet).catch(console.error);
+    },
+    [roomId, userId],
+  );
+
+  // Alla revoca del controllo la scheda del giocatore va rimossa dal database:
+  // altrimenti il master continuerebbe a fondere un dato ormai vecchio.
+  useEffect(() => {
+    if (!campaign.playersCanEdit) {
+      updateUserSheet(roomId, userId, null).catch(() => {
+        /* niente da fondere: se la rimozione fallisce, pazienza */
+      });
+    }
+  }, [campaign.playersCanEdit, roomId, userId]);
 
   const saveName = () => {
     if (tempName.trim()) {
@@ -190,6 +212,23 @@ export function ParticipantView({
         </div>
       </header>
 
+      {/* La tua scheda, sempre visibile: inventario, bonus e statistiche del
+          personaggio assegnato, modificabili se il master ha passato il
+          controllo. Rimonta al cambio di personaggio o di stato di modifica,
+          così la bozza riparte dai dati più recenti. */}
+      {assignedPlayer && (
+        <div className="mx-3 mt-3 sm:mx-5 lg:mx-8">
+          <PlayerSheetPanel
+            key={`${assignedPlayer.id}-${canEditSheet}`}
+            player={assignedPlayer}
+            statsEnabled={campaign.statsEnabled}
+            statLabels={campaign.statLabels}
+            editable={canEditSheet}
+            onSave={saveSheet}
+          />
+        </div>
+      )}
+
       {/* La vista condivisa si estende per intero: la cornice che la
           racchiudeva le rubava spazio ai lati senza aggiungere nulla. */}
       <div className="flex-1">
@@ -219,24 +258,7 @@ export function ParticipantView({
             )
           }
           diceRollerSlot={
-            assignedPlayer ? (
-              <DiceRoller
-                selectedDice={selectedDice}
-                onSelectedDiceChange={setSelectedDice}
-                lastRoll={myRolls[0] ?? null}
-                theme={campaign.theme}
-                diceLabels={campaign.diceLabels}
-                hideHistory
-                onRoll={(diceType, result, label) => {
-                  pushParticipantRoll(roomId, {
-                    diceType,
-                    result,
-                    timestamp: Date.now(),
-                    label: encodeRollLabel(userId, user.name, label),
-                  }).catch(console.error);
-                }}
-              />
-            ) : (
+            !assignedPlayer ? (
               <div className="flex h-28 flex-col items-center justify-center gap-1 p-4 text-center opacity-60">
                 <span className="font-mono text-xs uppercase tracking-widest text-slate-500">
                   Dadi non disponibili
@@ -245,6 +267,36 @@ export function ParticipantView({
                   Il master deve assegnarti un personaggio
                 </span>
               </div>
+            ) : !isMyTurn ? (
+              <div className="flex h-28 flex-col items-center justify-center gap-2 p-4 text-center opacity-70">
+                <Hourglass className="h-5 w-5 text-slate-500" />
+                <span className="font-mono text-xs uppercase tracking-widest text-slate-500">
+                  Non è il tuo turno
+                </span>
+                <span className="text-[10px] text-slate-600">
+                  Potrai lanciare quando il master ti darà l&apos;iniziativa
+                </span>
+              </div>
+            ) : (
+              <DiceRoller
+                selectedDice={selectedDice}
+                onSelectedDiceChange={setSelectedDice}
+                lastRoll={myRolls[0] ?? null}
+                theme={campaign.theme}
+                diceLabels={campaign.diceLabels}
+                dicePlus={campaign.dicePlus}
+                hideHistory
+                onRoll={(roll) => {
+                  pushParticipantRoll(roomId, {
+                    diceType: roll.diceType,
+                    result: roll.result,
+                    timestamp: Date.now(),
+                    label: encodeRollLabel(userId, user.name, roll.label),
+                    detail: roll.detail,
+                    mode: roll.mode,
+                  }).catch(console.error);
+                }}
+              />
             )
           }
         />

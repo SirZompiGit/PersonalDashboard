@@ -24,7 +24,8 @@
 
 import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react';
 import type { HealthBar, Resource } from '../types';
-import { Edit2, ShieldAlert, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Edit2, GripVertical, ShieldAlert, Trash2 } from 'lucide-react';
+import { Tooltip } from './ui/Tooltip';
 import {
   DEFAULT_ZERO_HP_TEXT,
   SEGMENT_THRESHOLD,
@@ -47,15 +48,35 @@ interface Particle {
   offsetX: number;
 }
 
+/**
+ * Comandi di riordino, forniti dal gestore (che coordina il trascinamento fra
+ * più barre). La maniglia è `draggable`, la scheda è bersaglio del rilascio; le
+ * frecce sono l'alternativa da tocco e tastiera.
+ */
+export interface ReorderControls {
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onDragStart: () => void;
+  onDragEnter: () => void;
+  onDragEnd: () => void;
+  onDrop: () => void;
+  dragging: boolean;
+  dragOver: boolean;
+}
+
 interface HealthBarItemProps {
   bar: HealthBar;
   onChangeValue: (bar: HealthBar, value: number) => void;
   /** Assente = risorse in sola lettura. */
   onChangeResource?: (bar: HealthBar, resource: Resource, value: number) => void;
-  /** Nasconde le risorse che il master non condivide con i giocatori. */
-  onlySharedResources?: boolean;
+  /** Nella vista condivisa mostra solo risorse ed effetti contrassegnati come pubblici. */
+  onlyShared?: boolean;
   onEdit?: (bar: HealthBar) => void;
   onDelete?: (bar: HealthBar) => void;
+  /** Presente solo in dashboard: abilita maniglia e frecce di riordino. */
+  reorder?: ReorderControls;
   readOnly?: boolean;
   layout?: 'horizontal' | 'vertical';
 }
@@ -88,6 +109,9 @@ const VERTICAL_SIZE = [
 
 /** Colonna che contiene le tracce, larga quanto basta per le risorse presenti. */
 const VERTICAL_COLUMN = ['w-[24px] sm:w-[26px]', 'w-[44px] sm:w-[46px]', 'w-[64px] sm:w-[66px]'];
+
+/** Sigla di un effetto, per le targhette compatte: le prime due lettere. */
+const statusInitials = (name: string): string => name.trim().slice(0, 2).toUpperCase() || '•';
 
 interface BarTrackProps {
   value: number;
@@ -292,9 +316,10 @@ export function HealthBarItem({
   bar,
   onChangeValue,
   onChangeResource,
-  onlySharedResources = false,
+  onlyShared = false,
   onEdit,
   onDelete,
+  reorder,
   readOnly = false,
   layout = 'horizontal',
 }: HealthBarItemProps) {
@@ -382,9 +407,12 @@ export function HealthBarItem({
   const inAlert = isLowHp(bar);
 
   // Nella vista condivisa il master vede esattamente ciò che vedono i giocatori:
-  // le risorse tenute private spariscono anche dalla sua anteprima.
+  // risorse ed effetti tenuti privati spariscono anche dalla sua anteprima.
   const resources = (bar.resources ?? []).filter(
-    (resource) => !onlySharedResources || resource.shared,
+    (resource) => !onlyShared || resource.shared,
+  );
+  const statusEffects = (bar.statusEffects ?? []).filter(
+    (effect) => !onlyShared || effect.shared,
   );
 
   const flashRing =
@@ -426,6 +454,42 @@ export function HealthBarItem({
     />
   );
 
+  // Targhette col nome esteso, per la scheda larga.
+  const effectPills = statusEffects.length > 0 && (
+    <div className="mt-2 flex flex-wrap items-center gap-1">
+      {statusEffects.map((effect) => (
+        <span
+          key={effect.id}
+          title={effect.name}
+          className="inline-flex max-w-[8rem] items-center rounded-full border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+          style={{
+            color: effect.color,
+            borderColor: `${effect.color}66`,
+            backgroundColor: `${effect.color}1f`,
+          }}
+        >
+          <span className="truncate">{effect.name}</span>
+        </span>
+      ))}
+    </div>
+  );
+
+  // Solo iniziali, per la colonna verticale dove non c'è spazio per un nome.
+  const effectDots = statusEffects.length > 0 && (
+    <div className="flex shrink-0 flex-wrap items-center justify-center gap-0.5">
+      {statusEffects.map((effect) => (
+        <Tooltip key={effect.id} label={effect.name}>
+          <span
+            className="flex h-4 min-w-4 items-center justify-center rounded px-0.5 text-[8px] font-bold"
+            style={{ color: effect.color, backgroundColor: `${effect.color}26` }}
+          >
+            {statusInitials(effect.name)}
+          </span>
+        </Tooltip>
+      ))}
+    </div>
+  );
+
   const particleNodes = particles.map((particle) => (
     <div
       key={particle.id}
@@ -465,6 +529,10 @@ export function HealthBarItem({
         <div
           className={`flex ${VERTICAL_COLUMN[resources.length]} shrink-0 flex-col items-center`}
         >
+          {/* In verticale gli effetti non hanno spazio per un nome: solo le
+              iniziali colorate, in cima. */}
+          {effectDots && <div className="mb-1 w-full">{effectDots}</div>}
+
           {/* Le risorse affiancano la barra della vita: in verticale non c'è
               spazio per un'etichetta, quindi nome e valore stanno nel `title`
               e nell'etichetta accessibile della traccia. */}
@@ -491,12 +559,38 @@ export function HealthBarItem({
 
   return (
     <div
-      className={`group relative rounded-xl border border-bento-border bg-bento-bg p-3 transition-colors duration-200 sm:p-4 ${
-        readOnly ? '' : 'hover:border-slate-600'
+      onDragOver={reorder ? (event) => event.preventDefault() : undefined}
+      onDragEnter={reorder?.onDragEnter}
+      onDrop={
+        reorder
+          ? (event) => {
+              event.preventDefault();
+              reorder.onDrop();
+            }
+          : undefined
+      }
+      onDragEnd={reorder?.onDragEnd}
+      className={`group relative rounded-xl border bg-bento-bg p-3 transition-colors duration-200 sm:p-4 ${
+        readOnly ? 'border-bento-border' : 'border-bento-border hover:border-slate-600'
+      } ${reorder?.dragging ? 'opacity-30' : ''} ${
+        reorder?.dragOver ? 'border-theme-500 ring-1 ring-theme-500/30' : ''
       } ${shaking ? 'health-shake' : ''}`}
     >
       <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
+          {/* Maniglia di trascinamento: è l'UNICO elemento `draggable`, così il
+              riordino non entra mai in conflitto col trascinamento degli HP
+              sulla traccia. Visibile al passaggio del mouse, come i controlli. */}
+          {reorder && (
+            <span
+              draggable
+              onDragStart={reorder.onDragStart}
+              aria-hidden
+              className="touch-visible hidden shrink-0 cursor-grab text-slate-600 opacity-0 transition-opacity duration-200 hover:text-slate-300 active:cursor-grabbing group-hover:opacity-100 sm:block"
+            >
+              <GripVertical className="h-4 w-4" />
+            </span>
+          )}
           <span className="truncate font-display text-sm font-bold tracking-wide text-slate-200 md:text-base">
             {bar.name}
           </span>
@@ -511,6 +605,35 @@ export function HealthBarItem({
         <div className="flex shrink-0 items-center gap-2">
           {!readOnly && (
             <div className="touch-visible flex items-center gap-0.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+              {reorder && (
+                <>
+                  <button
+                    type="button"
+                    aria-label={`Sposta ${bar.name} in alto`}
+                    disabled={!reorder.canMoveUp}
+                    onClick={() => {
+                      playClickSound();
+                      reorder.onMoveUp();
+                    }}
+                    className="rounded-lg p-1 text-slate-400 transition-colors duration-200 hover:bg-bento-button hover:text-slate-200 disabled:opacity-25"
+                  >
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Sposta ${bar.name} in basso`}
+                    disabled={!reorder.canMoveDown}
+                    onClick={() => {
+                      playClickSound();
+                      reorder.onMoveDown();
+                    }}
+                    className="rounded-lg p-1 text-slate-400 transition-colors duration-200 hover:bg-bento-button hover:text-slate-200 disabled:opacity-25"
+                  >
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="mx-0.5 h-4 w-px bg-bento-border" />
+                </>
+              )}
               {[
                 { delta: -5, label: '-5 punti ferita', tone: 'hover:text-red-400' },
                 { delta: -1, label: '-1 punto ferita', tone: 'hover:text-red-400' },
@@ -579,6 +702,8 @@ export function HealthBarItem({
         {mainTrack}
         {particleNodes}
       </div>
+
+      {effectPills}
 
       {resources.length > 0 && (
         <div className="mt-1.5 space-y-0.5">

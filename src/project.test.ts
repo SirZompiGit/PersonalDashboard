@@ -140,6 +140,21 @@ describe('regole del Realtime Database', () => {
     const roll = parsed.rules.rooms.$pin.participantRolls.$indice;
     expect(roll['.validate']).toContain('$indice.matches');
   });
+
+  it('accettano gli extra di Dado+ sui lanci', () => {
+    const roll = parsed.rules.rooms.$pin.participantRolls.$indice;
+    expect(roll.detail).toBeTruthy();
+    expect(roll.mode).toBeTruthy();
+  });
+
+  it('accettano la scheda che il giocatore modifica', () => {
+    const sheet = parsed.rules.rooms.$pin.users.$userId.sheet;
+    expect(sheet.inventory.$i.name).toBeTruthy();
+    expect(sheet.bonus.$i.name).toBeTruthy();
+    expect(sheet.stats.$i['.validate']).toContain('isNumber');
+    // Le chiavi ignote restano rifiutate.
+    expect(sheet.$altro['.validate']).toBe(false);
+  });
 });
 
 describe('marchio', () => {

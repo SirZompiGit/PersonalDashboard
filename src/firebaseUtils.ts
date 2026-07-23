@@ -26,13 +26,26 @@ import {
   update,
 } from 'firebase/database';
 import { getDb } from './firebase';
-import type { CampaignState, RollResult } from './types';
+import type { BonusItem, CampaignState, InventoryItem, RollResult } from './types';
+
+/**
+ * Scheda modificata dal giocatore quando il master gli passa il controllo.
+ * Vive sul nodo dell'utente e viene fusa nella campagna dal master — l'unico a
+ * scrivere `campaign` — così il modello a scrittore unico resta intatto.
+ */
+export interface PlayerSheet {
+  inventory: InventoryItem[];
+  bonus: BonusItem[];
+  stats?: number[];
+}
 
 export interface RoomUser {
   id: string;
   name: string;
   assignedPlayerId: string | null;
   notes: string;
+  /** Presente solo quando il giocatore ha il controllo e ha modificato qualcosa. */
+  sheet?: PlayerSheet;
 }
 
 export interface RoomState {
@@ -137,6 +150,24 @@ export async function updateUser(
   updates: Partial<RoomUser>,
 ): Promise<void> {
   await update(ref(getDb(), `rooms/${pin}/users/${userId}`), updates);
+}
+
+/**
+ * Scrive la scheda del giocatore, o la rimuove (`null`).
+ *
+ * È uno snapshot COMPLETO, non un delta: il master lo copia tale e quale nel
+ * personaggio assegnato, quindi deve contenere tutto ciò che il giocatore vede.
+ * Alla revoca del controllo va rimossa, per non lasciare il master a fondere un
+ * dato ormai vecchio.
+ */
+export async function updateUserSheet(
+  pin: string,
+  userId: string,
+  sheet: PlayerSheet | null,
+): Promise<void> {
+  await update(ref(getDb(), `rooms/${pin}/users/${userId}`), {
+    sheet: sheet ? clean(sheet) : null,
+  });
 }
 
 /**
